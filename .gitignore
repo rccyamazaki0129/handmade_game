@@ -1,1 +1,5 @@
-project/build/
+project/build/main.exe
+project/build/main.ilk
+project/build/main.obj
+project/build/main.pdb
+project/build/vc140.pdb
