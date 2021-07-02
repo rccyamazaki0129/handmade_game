@@ -7,7 +7,6 @@
 
 //TODO: This is a global for now
 global_variable bool Running;
-
 global_variable BITMAPINFO BitmapInfo;
 global_variable void *BitmapMemory;
 global_variable int BitmapWidth;
@@ -178,6 +177,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             ReleaseDC(Window, DeviceContext);
 
             XOffset++;
+            YOffset++;
           }
       }
       else {
