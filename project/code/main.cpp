@@ -40,11 +40,7 @@ internal void Win32ResizeDIBSection(int Width, int Height){
 }
 
 internal void Win32UpdateWindow(HDC DeviceContext, int X, int Y, int Width, int Height){
-  StretchDIBits(DeviceContext, X, Y, Width, Height, X, Y, Width, Height,
-    BitmapMemory,
-    &BitmapInfo,
-    DIB_RGB_COLORS,
-    SRCCOPY);
+  StretchDIBits(DeviceContext, X, Y, Width, Height, X, Y, Width, Height, BitmapMemory, &BitmapInfo, DIB_RGB_COLORS, SRCCOPY);
 }
 
 LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam){
@@ -143,6 +139,5 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   else {
     //TODO: Logging
   }
-
   return(0);
 }
