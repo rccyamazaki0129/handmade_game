@@ -188,7 +188,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
   Buffer->Info.bmiHeader.biClrImportant = 0;
 
   int BitmapMemorySize = BytesPerPixel * Buffer->Width * Buffer->Height;
-  Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+  Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
   //TODO: Probably clear to this black
 
