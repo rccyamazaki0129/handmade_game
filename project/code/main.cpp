@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
 
 #define internal static
 #define local_persist static
@@ -28,7 +29,7 @@ global_variable win32_offscreen_buffer GlobalBackBuffer;
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
 X_INPUT_GET_STATE(XInputGetStateStub){
-  return(0);
+  return(ERROR_DEVICE_NOT_CONNECTED);
 }
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 #define XInputGetState XInputGetState_
@@ -37,16 +38,94 @@ global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 #define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
 typedef X_INPUT_SET_STATE(x_input_set_state);
 X_INPUT_SET_STATE(XInputSetStateStub){
-  return(0);
+  return(ERROR_DEVICE_NOT_CONNECTED);
 }
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
 
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
 internal void Win32LoadXInput(){
-  HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+  HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+  if (!XInputLibrary){
+    //TODO: Diagnostic
+    XInputLibrary = LoadLibraryA("xinput1_3.dll");
+  }
   if (XInputLibrary){
     XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
     XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+
+    //TODO: Diagnostic
+  }
+  else {
+    //TODO: Diagnostic
+  }
+}
+
+internal void Win32InitDSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize){
+  //NOTE: Load the library
+  HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+
+  if (DSoundLibrary){
+    //NOTE: Get a DirectSound Object
+    direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+    LPDIRECTSOUND DirectSound;
+    if (DirectSoundCreate && SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0))){
+
+      WAVEFORMATEX WaveFormat = {};
+      WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+      WaveFormat.nChannels = 2;
+      WaveFormat.nSamplesPerSec = SamplesPerSecond;
+      WaveFormat.wBitsPerSample = 16;
+      WaveFormat.nBlockAlign = (WaveFormat.nChannels * WaveFormat.wBitsPerSample) / 8;
+      WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
+      WaveFormat.cbSize = 0;
+
+      if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY))){
+        DSBUFFERDESC BufferDiscription = {};
+        BufferDiscription.dwSize = sizeof(BufferDiscription);
+        BufferDiscription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+
+        //NOTE: Create a primary buffer
+        //TODO: DSBCAPS_GLOBALFOCUS?
+        LPDIRECTSOUNDBUFFER PrimaryBuffer;
+        if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDiscription, &PrimaryBuffer, 0))){
+          HRESULT Error = PrimaryBuffer->SetFormat(&WaveFormat);
+          if (SUCCEEDED(Error)){
+            //NOTE: We have finally set the format
+            OutputDebugStringA("Primary buffer format was set\n");
+          }
+          else {
+            //TODO: Diagnostic
+          }
+        }
+      }
+      else {
+        //TODO: Diagnostic
+      }
+
+      //NOTE: Create a secondary buffer
+      //TODO: DSBCAPS_GETCURRENTPOSITION?
+      DSBUFFERDESC BufferDiscription = {};
+      BufferDiscription.dwSize = sizeof(BufferDiscription);
+      BufferDiscription.dwFlags = 0;
+      BufferDiscription.dwBufferBytes = BufferSize;
+      BufferDiscription.lpwfxFormat = &WaveFormat;
+      LPDIRECTSOUNDBUFFER SecondaryBuffer;
+      HRESULT Error = DirectSound->CreateSoundBuffer(&BufferDiscription, &SecondaryBuffer, 0);
+      if (SUCCEEDED(Error)){
+        OutputDebugStringA("Secondary buffer created successfully\n");
+      }
+      //NOTE: Start it playing
+
+    }
+    else {
+      //TODO: Diagnostic
+    }
+  }
+  else {
+    //TODO: Diagnostic
   }
 }
 
@@ -188,6 +267,10 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
         else if (VKCode == VK_SPACE){
         }
       }
+      bool AltKeyWasDown = ((LParam & (1 << 29)) != 0);
+      if ((VKCode == VK_F4) && AltKeyWasDown){
+        GlobalRunning = false;
+      }
       break;
     }
     case WM_PAINT:{
@@ -248,6 +331,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
           int XOffset = 0;
           int YOffset = 0;
+
+          Win32InitDSound(Window, 48000, 48000*sizeof(int16_t)*2);
           GlobalRunning = true;
 
           while (GlobalRunning){
@@ -265,7 +350,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             //TODO: should we pull this more frequently
             for (DWORD ControllerIntex = 0; ControllerIntex < XUSER_MAX_COUNT; ControllerIntex++ ){
               XINPUT_STATE ControllerState;
-              if (XInputGetState(ControllerIntex, &ControllerState)){
+              if (XInputGetState(ControllerIntex, &ControllerState) == ERROR_SUCCESS){
                 //NOTE: This controller is plugged in
                 //TODO: See if ControllerState.dwPacketNumber increments too rapidly
                 XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
@@ -285,8 +370,22 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                 int16_t StickX = Pad->sThumbLX;
                 int16_t StickY = Pad->sThumbLY;
 
-                XOffset += StickX >> 14;
-                YOffset += StickY >> 14;
+                //NOTE: FixControllerInput Function
+                //      since my gamepad's LStick is working poorly,
+                //      Negative Stick value must be rounded-up
+                if (StickX > 0){
+                  XOffset += StickX >> 13;
+                }
+                else {
+                  XOffset += StickX >> 14;
+                }
+
+                if (StickY > 0){
+                  YOffset += StickY >> 13;
+                }
+                else {
+                  YOffset += StickY >> 14;
+                }
               }
               else {
                 //NOTE: The controller is not available
