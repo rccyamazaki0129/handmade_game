@@ -6,12 +6,12 @@
 #define global_variable static
 
 struct win32_offscreen_buffer{
+  //NOTE: pixels are always 32-bit wide, memory order: BBGGRRXX
   BITMAPINFO Info;
   void *Memory;
   int Width;
   int Height;
   int Pitch;
-  int BytesPerPixel;
 };
 
 struct win32_window_dimension{
@@ -67,7 +67,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 
   Buffer->Width = Width;
   Buffer->Height = Height;
-  Buffer->BytesPerPixel = 4;
+  int BytesPerPixel = 4;
 
   //NOTE: When the biHeight field is negative, this is the clue to
   //      windows to treat this bitmap as top-down, not bottom-up
@@ -83,17 +83,16 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
   Buffer->Info.bmiHeader.biClrUsed = 0;
   Buffer->Info.bmiHeader.biClrImportant = 0;
 
-  int BitmapMemorySize = Buffer->BytesPerPixel * Buffer->Width * Buffer->Height;
+  int BitmapMemorySize = BytesPerPixel * Buffer->Width * Buffer->Height;
   Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 
   //TODO: Probably clear to this black
 
-  Buffer->Pitch = Buffer->Width * Buffer->BytesPerPixel;
+  Buffer->Pitch = Buffer->Width * BytesPerPixel;
 }
 
 internal void Win32DisplayBufferInWindow(HDC DeviceContext, int WindowWidth, int WindowHeight,
-                                         win32_offscreen_buffer Buffer,
-                                         int X, int Y, int Width, int Height){
+                                         win32_offscreen_buffer Buffer){
   //TODO: Aspect ratio correction
 
   StretchDIBits(DeviceContext, /*X, Y, Width, Height, X, Y, Width, Height,*/
@@ -132,7 +131,7 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WPara
       int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
       int Width = Paint.rcPaint.right - Paint.rcPaint.left;
       win32_window_dimension Dimension = Win32GetWindowDimension(Window);
-      Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, X, Y, Dimension.Width, Dimension.Height);
+      Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
       EndPaint(Window, &Paint);
 
       break;
@@ -198,7 +197,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
 
             win32_window_dimension Dimension = Win32GetWindowDimension(Window);
-            Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, 0, 0, Dimension.Width, Dimension.Height);
+            Win32DisplayBufferInWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
             ReleaseDC(Window, DeviceContext);
 
             XOffset++;
