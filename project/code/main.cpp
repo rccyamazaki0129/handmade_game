@@ -344,7 +344,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           int SecondaryBufferSize = SamplesPerSecond*BytesPerSample;
 
           Win32InitDSound(Window, SamplesPerSecond, SecondaryBufferSize);
-          GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+          bool32 SoundIsPlaying = false;
+
           GlobalRunning = true;
 
           while (GlobalRunning){
@@ -419,7 +420,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
               DWORD BytesToLock = RunningSampleIndex*BytesPerSample % SecondaryBufferSize;
               DWORD BytesToWrite;
-              if (BytesToLock > PlayCursor){
+              if (BytesToLock == PlayCursor){
+                BytesToWrite = SecondaryBufferSize;
+              }
+              else if (BytesToLock > PlayCursor){
                 BytesToWrite = SecondaryBufferSize - BytesToLock;
                 BytesToWrite += PlayCursor;
               }
@@ -455,6 +459,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                 }
                 GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
               }
+            }
+            if (!SoundIsPlaying){
+              GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+              SoundIsPlaying = true;
             }
 
             win32_window_dimension Dimension = Win32GetWindowDimension(Window);
