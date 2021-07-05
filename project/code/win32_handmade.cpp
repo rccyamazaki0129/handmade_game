@@ -1,3 +1,21 @@
+/*
+  TODO: This is not a final platform layer!!
+
+  - Saved game locations
+  - Getting a handle to our own executable file
+  - Asset loading path
+  - Threading (launcha thread)
+  - Raw input (support for multiple keyboards)
+  - Sleep/time Begin period
+  - ClipCursor() (for multimonitor support)
+  - Fullscreen support
+  - WM_SETCURSOR (control cursor visibility)
+  - QueryCancelAutoplay
+  - Blit speed improvements (BitBlt)
+  - Hardware acceleration (openGL or Direct3D or BOTH?)
+  - GetKeyboardLayout (for french keyboards, international WASD support)
+  - etc...
+*/
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
@@ -12,6 +30,8 @@
 #define Pi32 3.14159265359
 typedef float real32;
 typedef double real64;
+
+#include "handmade.cpp"
 
 struct win32_offscreen_buffer{
   //NOTE: pixels are always 32-bit wide, memory order: BBGGRRXX
@@ -52,6 +72,11 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+void *PlatformLoadFile(char *FileName){
+  //NOTE: Implements the Win32 file loading
+  return(0);
+}
 
 internal void Win32LoadXInput(){
   HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
