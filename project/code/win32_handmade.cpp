@@ -173,30 +173,6 @@ internal win32_window_dimension Win32GetWindowDimension(HWND Window){
   return(Result);
 }
 
-internal void RenderWeirdGradient(win32_offscreen_buffer *Buffer, int XOffset, int YOffset){
-  //TODO: Let's see what the optimizer does
-  uint8_t *Row = (uint8_t *)Buffer->Memory;
-
-  for (int y = 0; y < Buffer->Height; y++){
-
-    uint32_t *Pixel = (uint32_t *)Row;
-
-    for (int x = 0; x < Buffer->Width; x++){
-      /*
-        Pixel in memory: 00 00 00 00
-                         BB GG RR XX
-        0x XXRRGGBB
-      */
-      uint8_t Blue = (x + XOffset);
-      uint8_t Green = (y + YOffset);
-      uint8_t Red = uint8_t((x + y) / 16);
-
-      *Pixel++ = ((Red << 16) | (Green << 8) | Blue);
-    }
-    Row += Buffer->Pitch;
-  }
-}
-
 internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height){
   //TODO: Bulletproof this
   // maybe dont free first, free after, then free first if that fails
@@ -512,7 +488,13 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             Vibration.wRightMotorSpeed = speed;
 
             XInputSetState(0, &Vibration);
-            RenderWeirdGradient(&GlobalBackBuffer, XOffset, YOffset);
+
+            game_offscreen_buffer Buffer = {};
+            Buffer.Memory = GlobalBackBuffer.Memory;
+            Buffer.Width = GlobalBackBuffer.Width;
+            Buffer.Height = GlobalBackBuffer.Height;
+            Buffer.Pitch = GlobalBackBuffer.Pitch;
+            GameUpdateAndRender(&Buffer, XOffset, YOffset);
 
             //NOTE: DirectSound output test
             DWORD PlayCursor;
@@ -522,8 +504,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               DWORD BytesToLock = (SoundOutput.RunningSampleIndex*SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize;
               DWORD TargetCursor = (PlayCursor + (SoundOutput.LatencySampleCount*SoundOutput.BytesPerSample)) % SoundOutput.SecondaryBufferSize;
               DWORD BytesToWrite;
-              //TODO: Change this to using a lower latency offset from the playcursor
-              //      when we actually start having sound effects
+
               if (BytesToLock > TargetCursor){
                 BytesToWrite = SoundOutput.SecondaryBufferSize - BytesToLock;
                 BytesToWrite += TargetCursor;
@@ -547,17 +528,17 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             LARGE_INTEGER EndCounter;
             QueryPerformanceCounter(&EndCounter);
 
-            //TODO: Display the value here
             uint64_t CycleElapsed = EndCycleCount - LastCycleCount;
             int64_t CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
             real32 MSPerFrame = (real32)((1000 * CounterElapsed) / (real32)PerfCountFrequency);
             real32 FPS = (real32)(1000 / (real32)MSPerFrame);
             real32 MCPF = (real32)(CycleElapsed/(real32)(1000*1000));
 
+#if 0
             char Buffer[256];
             sprintf(Buffer, "%fms/f, %fFPS, %fMc/f\n", MSPerFrame, FPS, MCPF);
             OutputDebugStringA(Buffer);
-
+#endif
             LastCycleCount = EndCycleCount;
             LastCounter = EndCounter;
           }
