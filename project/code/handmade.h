@@ -9,7 +9,8 @@
   TODO: Services that the game provides to the platform layer
   (This may expand in the future - sound on separate thread, etc...)
 */
-//4 things - timing, controller/keyboard input, bitmap buffer to use, sound buffer to use
+// 4 things - timing, controller/keyboard input, bitmap buffer to use, sound buffer to use
+// TODO: In the future, rendering _specifically_ will become a three-tiered abstraction!!
 struct game_offscreen_buffer{
   //NOTE: pixels are always 32-bit wide, memory order: BBGGRRXX
   void *Memory;

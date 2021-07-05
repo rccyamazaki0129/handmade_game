@@ -16,22 +16,24 @@
   - GetKeyboardLayout (for french keyboards, international WASD support)
   - etc...
 */
-#include <windows.h>
 #include <stdint.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <stdio.h>
-//TODO: Implement sine ourselves
-#include <math.h>
 
 #define internal static
 #define local_persist static
 #define global_variable static
-#define Pi32 3.14159265359
+#define Pi32 3.14159265359f
 typedef float real32;
 typedef double real64;
 
 #include "handmade.cpp"
+
+#include <windows.h>
+#include <stdio.h>
+#include <xinput.h>
+#include <dsound.h>
+
+//TODO: Implement sine ourselves
+#include <math.h>
 
 struct win32_offscreen_buffer{
   //NOTE: pixels are always 32-bit wide, memory order: BBGGRRXX
@@ -75,7 +77,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 void *PlatformLoadFile(char *FileName){
   //NOTE: Implements the Win32 file loading
-  return(0);
+  return 0;
 }
 
 internal void Win32LoadXInput(){
@@ -550,5 +552,5 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   else {
     //TODO: Logging
   }
-  return(0);
+  return 0;
 }
