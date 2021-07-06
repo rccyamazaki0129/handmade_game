@@ -410,13 +410,13 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           int16_t *Samples = (int16_t*)VirtualAlloc(0, SoundOutput.SecondaryBufferSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
 #if HANDMADE_INTERNAL
-          LPVOID BaseAddress = (LPVOID)Terabytes((uint64_t)2);
+          LPVOID BaseAddress = (LPVOID)Terabytes(2);
 #else
           LPVOID BaseAddress = 0;
 #endif
           game_memory GameMemory = {};
           GameMemory.PermanentStorageSize = Megabytes(64);
-          GameMemory.TransientStorageSize = Gigabytes((uint64_t)4);
+          GameMemory.TransientStorageSize = Gigabytes(4);
           uint64_t TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
           GameMemory.PermanentStorage = (int16_t*)VirtualAlloc(BaseAddress, TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
           GameMemory.TransientStorage = ((int8_t*)GameMemory.PermanentStorage + GameMemory.PermanentStorageSize);
@@ -499,29 +499,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                   Win32ProcessXInputDigitalButton(Pad->wButtons, &OldController->Up, XINPUT_GAMEPAD_Y, &NewController->Up);
                   Win32ProcessXInputDigitalButton(Pad->wButtons, &OldController->LeftShoulder, XINPUT_GAMEPAD_LEFT_SHOULDER, &NewController->LeftShoulder);
                   Win32ProcessXInputDigitalButton(Pad->wButtons, &OldController->RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER, &NewController->RightShoulder);
-
-
                   // bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
                   // bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
-
-
-                  //NOTE: FixControllerInput Function
-                  //      since my gamepad's LStick is working poorly,
-                  //      Negative Stick value must be rounded-up
-
-                  // if (StickX > 0){
-                  //   XOffset += StickX >> 13;
-                  // }
-                  // else {
-                  //   XOffset += StickX >> 14;
-                  // }
-                  //
-                  // if (StickY > 0){
-                  //   YOffset += StickY >> 13;
-                  // }
-                  // else {
-                  //   YOffset += StickY >> 14;
-                  // }
 
                 }
                 else {
