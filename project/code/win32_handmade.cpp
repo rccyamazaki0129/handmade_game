@@ -508,11 +508,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
             XInputSetState(0, &Vibration);
 
-            DWORD BytesToLock;
-            DWORD PlayCursor;
-            DWORD WriteCursor;
-            DWORD TargetCursor;
-            DWORD BytesToWrite;
+            DWORD BytesToLock = 0;
+            DWORD PlayCursor = 0;
+            DWORD WriteCursor = 0;
+            DWORD TargetCursor = 0;
+            DWORD BytesToWrite = 0;
             bool SoundIsValid = false;
             //TODO: Tighten up sound logic so that we know where we should be
             //      writing to and can anticipate the time spent in the game update.
