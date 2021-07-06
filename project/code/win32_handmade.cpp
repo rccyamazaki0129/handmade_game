@@ -462,12 +462,14 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                 //TODO: We will do deadzone handling later using
                 //#define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
                 //#define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+
+                //TODO: Collapse to signle function
                 real32 X;
                 if (Pad->sThumbLX < 0){
                   X =  (real32)(Pad->sThumbLX) / 32768.0f;
                 }
                 else {
-                  X =  (real32)(Pad->sThumbLX) / 32768.0f;
+                  X =  (real32)(Pad->sThumbLX) / 32767.0f;
                 }
                 NewController->MinX = NewController->MaxX = NewController->EndX = X;
 
@@ -476,7 +478,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                   Y =  (real32)(Pad->sThumbLY) / 32768.0f;
                 }
                 else {
-                  Y =  (real32)(Pad->sThumbLY) / 32768.0f;
+                  Y =  (real32)(Pad->sThumbLY) / 32767.0f;
                 }
                 NewController->MinY = NewController->MaxY = NewController->EndY = Y;
 
