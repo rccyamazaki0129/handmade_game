@@ -7,6 +7,7 @@
   HANDMADE_SLOW:     0 - Not Slow code allowed!
                      1 - Slow code welcome.
 */
+
 #if HANDMADE_SLOW
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}//if this is true, program will crash
 #else
@@ -20,10 +21,21 @@
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 //TODO: Swap, min, max... macros???
 
+inline uint32_t SafeTruncateSizeUInt64(uint64_t Value){
+  //TODO: Defines for maximum values uint32Max
+  Assert(Value <= 0xFFFFFFFF);
+  uint32_t Result = (uint32_t)Value;
+  return Result;
+}
+
 /*
   TODO: Services that the platform layer provides to the game
 */
-
+#if HANDMADE_INTERNAL
+internal void *DEBUGPlatformReadEntireFile(char *FileName);
+internal void DEBUGPlatformFreeFileMemory(void *BitmapMemory);
+internal bool DEBUGPlatformWriteEntireFile(char *FileName, uint64_t MemorySize, void *Memory);
+#endif
 /*
   TODO: Services that the game provides to the platform layer
   (This may expand in the future - sound on separate thread, etc...)

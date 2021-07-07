@@ -35,8 +35,6 @@ typedef double real64;
 #include <malloc.h>
 
 #include "win32_handmade.h"
-//TODO: Implement sine ourselves
-
 
 //TODO: This is a global for now
 global_variable bool GlobalRunning;
@@ -64,9 +62,50 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter);
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-void *PlatformLoadFile(char *FileName){
-  //NOTE: Implements the Win32 file loading
-  return 0;
+internal void *DEBUGPlatformReadEntireFile(char *FileName){
+  void *Result = 0;
+  HANDLE FileHandle = CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+  if (FileHandle != INVALID_HANDLE_VALUE){
+    LARGE_INTEGER FileSize;
+    if (GetFileSizeEx(FileHandle, &FileSize)){
+      uint32_t FileSize32 = SafeTruncateSizeUInt64(FileSize.QuadPart);
+      Result = VirtualAlloc(0, FileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+      if (Result){
+        DWORD BytesRead;
+        if (ReadFile(FileHandle, Result, FileSize32, &BytesRead, 0) && (FileSize32 == BytesRead)){
+          //NOTE: File read successfully
+
+        }
+        else {
+          //TODO: Logging
+          DEBUGPlatformFreeFileMemory(Result);
+          Result = 0;
+        }
+      }
+      else {
+        //TODO: Logging
+      }
+    }
+    else {
+      //TODO: Logging
+    }
+
+    CloseHandle(FileHandle);
+  }
+  else {
+    //TODO: Logging
+  }
+
+  return Result;
+
+}
+internal void DEBUGPlatformFreeFileMemory(void *Memory){
+  if (Memory){
+    VirtualFree(Memory, 0, MEM_RELEASE);
+  }
+}
+internal bool DEBUGPlatformWriteEntireFile(char *FileName, uint64_t MemorySize, void *Memory){
+  return true;
 }
 
 internal void Win32LoadXInput(){
