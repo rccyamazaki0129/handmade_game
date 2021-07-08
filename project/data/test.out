@@ -32,8 +32,8 @@ internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int XOffset, in
                          BB GG RR XX
         0x XXRRGGBB
       */
-      uint8_t Blue = (x + XOffset);
-      uint8_t Green = (y + YOffset);
+      uint8_t Blue = (uint8_t)(x + XOffset);
+      uint8_t Green = (uint8_t)(y + YOffset);
       uint8_t Red = uint8_t((x + y) / 16);
 
       *Pixel++ = ((Red << 16) | (Green << 8) | Blue);
@@ -62,7 +62,7 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_o
   game_controller_input *Input0 = &Input->Controllers[0];
   if (Input0->IsAnalog){
     //NOTE: use analog movement tuning
-    GameState->YOffset += (int)4.0f*(Input0->EndX);
+    GameState->YOffset += (int)(4.0f*(Input0->EndX));
     GameState->ToneHz = 256 + (int)(128.0f*(Input0->EndY));
   }
   else {
@@ -70,7 +70,27 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_o
   }
 
   if (Input0->Down.EndedDown){
-    GameState->XOffset += 1;
+    GameState->YOffset += 1;
+  }
+  if (Input0->Up.EndedDown){
+    GameState->YOffset -= 1;
+  }
+
+  game_controller_input *Input1 = &Input->Controllers[1];
+  if (Input1->IsAnalog){
+    //NOTE: use analog movement tuning
+    GameState->YOffset += (int)(4.0f*(Input1->EndX));
+    GameState->ToneHz = 256 + (int)(128.0f*(Input1->EndY));
+  }
+  else {
+    //NOTE: use digital movement tuning
+  }
+
+  if (Input1->Down.EndedDown){
+    GameState->YOffset += 1;
+  }
+  if (Input1->Up.EndedDown){
+    GameState->YOffset -= 1;
   }
 
   // TODO: Allow sample offsets here for more robust platform options
