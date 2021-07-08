@@ -59,6 +59,8 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_o
     //TODO: This may be more appropriate to do in the platform layer
     Memory->IsInitialized = true;
   }
+
+  //NOTE: Input0 is usually Keyboard
   game_controller_input *Input0 = &Input->Controllers[0];
   if (Input0->IsAnalog){
     //NOTE: use analog movement tuning
@@ -76,6 +78,7 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_o
     GameState->YOffset -= 1;
   }
 
+  //NOTE: Input1 is usually Gamepad
   game_controller_input *Input1 = &Input->Controllers[1];
   if (Input1->IsAnalog){
     //NOTE: use analog movement tuning
