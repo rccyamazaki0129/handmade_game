@@ -32,7 +32,16 @@ inline uint32_t SafeTruncateSizeUInt64(uint64_t Value){
   TODO: Services that the platform layer provides to the game
 */
 #if HANDMADE_INTERNAL
-internal void *DEBUGPlatformReadEntireFile(char *FileName);
+/*
+  IMPORTANT:
+  These are NOT for doing anything in the shipping version
+  - they are blocking and the write doesn't protect against lost data
+*/
+struct debug_read_file_result{
+  uint32_t ContentsSize;
+  void *Contents;
+};
+internal debug_read_file_result DEBUGPlatformReadEntireFile(char *FileName);
 internal void DEBUGPlatformFreeFileMemory(void *BitmapMemory);
 internal bool DEBUGPlatformWriteEntireFile(char *FileName, uint64_t MemorySize, void *Memory);
 #endif
