@@ -61,39 +61,28 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_o
   }
 
   //NOTE: Input0 is usually Keyboard
-  game_controller_input *Input0 = &Input->Controllers[0];
-  if (Input0->IsAnalog){
-    //NOTE: use analog movement tuning
-    GameState->YOffset += (int)(4.0f*(Input0->EndX));
-    GameState->ToneHz = 256 + (int)(128.0f*(Input0->EndY));
-  }
-  else {
-    //NOTE: use digital movement tuning
-  }
-
-  if (Input0->Down.EndedDown){
-    GameState->YOffset += 1;
-  }
-  if (Input0->Up.EndedDown){
-    GameState->YOffset -= 1;
-  }
-
-  //NOTE: Input1 is usually Gamepad
-  game_controller_input *Input1 = &Input->Controllers[1];
-  if (Input1->IsAnalog){
-    //NOTE: use analog movement tuning
-    GameState->YOffset += (int)(4.0f*(Input1->EndX));
-    GameState->ToneHz = 256 + (int)(128.0f*(Input1->EndY));
-  }
-  else {
-    //NOTE: use digital movement tuning
-  }
-
-  if (Input1->Down.EndedDown){
-    GameState->YOffset += 1;
-  }
-  if (Input1->Up.EndedDown){
-    GameState->YOffset -= 1;
+  for (int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ++ControllerIndex){
+    game_controller_input *Controller = GetController(Input, ControllerIndex);
+    if (Controller->IsAnalog){
+      //NOTE: use analog movement tuning
+      GameState->YOffset += (int)(4.0f*(Controller->StickAverageX));
+      GameState->ToneHz = 256 + (int)(128.0f*(Controller->StickAverageY));
+    }
+    else {
+      //NOTE: use digital movement tuning
+      if (Controller->MoveLeft.EndedDown){
+        GameState->XOffset -= 1;
+      }
+      if (Controller->MoveRight.EndedDown){
+        GameState->XOffset += 1;
+      }
+      if (Controller->MoveDown.EndedDown){
+        GameState->YOffset += 1;
+      }
+      if (Controller->MoveUp.EndedDown){
+        GameState->YOffset -= 1;
+      }
+    }
   }
 
   // TODO: Allow sample offsets here for more robust platform options
