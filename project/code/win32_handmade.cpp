@@ -380,10 +380,10 @@ internal void Win32ProcessKeyboardMessage(game_button_state *NewState, bool IsDo
 internal real32 Win32ProcessXInputStickValue(SHORT Value, SHORT DeadZoneThreshold){
   real32 Result = 0;
   if (Value < -DeadZoneThreshold){
-    Result =  (real32)Value / 32768.0f;
+    Result =  (real32)(Value + DeadZoneThreshold) / (32768.0f - DeadZoneThreshold);
   }
   else if (Value > DeadZoneThreshold) {
-    Result =  (real32)Value / 32767.0f;
+    Result =  (real32)(Value + DeadZoneThreshold) / (32767.0f - DeadZoneThreshold);
   }
 
   return Result;
@@ -541,8 +541,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               //TODO: We can't zero everything because the up/down state will be wrong!!
               game_controller_input *OldKeyboardController = GetController(OldInput, 0);
               game_controller_input *NewKeyboardController = GetController(NewInput, 0);
-              game_controller_input ZeroController = {};
-              *NewKeyboardController = ZeroController;
+              *NewKeyboardController = {};
               NewKeyboardController->IsConnected = true;
               for (int ButtonIndex = 0; ButtonIndex < ArrayCount(NewKeyboardController->Buttons); ++ButtonIndex){
                 NewKeyboardController->Buttons[ButtonIndex].EndedDown = OldKeyboardController->Buttons[ButtonIndex].EndedDown;
@@ -568,26 +567,28 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                   //TODO: See if ControllerState.dwPacketNumber increments too rapidly
                   XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
 
-                  //TODO: DPad
-
-                  int16_t StickX = (short)(Pad->sThumbLX);
-                  int16_t StickY = (short)(Pad->sThumbLY);
-
-                  NewController->IsAnalog = true;
+                  //TODO: This is a square deadzone, check XInput to verify that the deadzone is "round" and show how to do round deadzone processing
                   NewController->StickAverageX = Win32ProcessXInputStickValue(Pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
                   NewController->StickAverageY = Win32ProcessXInputStickValue(Pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                  if (NewController->StickAverageX != 0.0f || NewController->StickAverageY != 0.0f){
+                    NewController->IsAnalog = true;
+                  }
 
                   if (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP){
                     NewController->StickAverageY = 1.0f;
+                    NewController->IsAnalog = false;
                   }
                   if (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN){
                     NewController->StickAverageY = -1.0f;
+                    NewController->IsAnalog = false;
                   }
                   if (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT){
                     NewController->StickAverageX = -1.0f;
+                    NewController->IsAnalog = false;
                   }
                   if (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT){
                     NewController->StickAverageX = 1.0f;
+                    NewController->IsAnalog = false;
                   }
 
                   real32 Threshold = 0.5f;
@@ -616,7 +617,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               }
 
               XINPUT_VIBRATION Vibration;
-              WORD speed = 0;
+              //NOTE: Valid values are in the range 0 to 65,535
+              WORD speed = 4000;
               Vibration.wLeftMotorSpeed = speed;
               Vibration.wRightMotorSpeed = speed;
 
@@ -680,7 +682,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               real32 FPS = (real32)(1000 / (real32)MSPerFrame);
               real32 MCPF = (real32)(CycleElapsed/(real32)(1000*1000));
 
-  #if 0
+  #if 1
               char CharBuffer[256];
               sprintf_s(CharBuffer, "%fms/f, %fFPS, %fMc/f\n", MSPerFrame, FPS, MCPF);
               OutputDebugStringA(CharBuffer);

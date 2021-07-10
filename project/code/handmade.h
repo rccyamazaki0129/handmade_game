@@ -94,6 +94,9 @@ struct game_controller_input{
 
       game_button_state Back;
       game_button_state Start;
+
+      //NOTE: All buttons must be added above this line
+      game_button_state Terminator;
     };
   };
 };
