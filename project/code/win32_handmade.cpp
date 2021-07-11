@@ -496,7 +496,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   //TODO: How do we reliably query on this on windows?
   int MonitorRefreshHz = 60;
   int GameUpdateHz = MonitorRefreshHz / 2;
-  real32 TargetSecondsElapsedPerFrame = 1.0f / (real32)GameUpdateHz;
+  real32 TargetSecondsPerFrame = 1.0f / (real32)GameUpdateHz;
 
   if (RegisterClass(&WindowClass)){
     HWND Window = CreateWindowEx(
@@ -666,7 +666,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
                 SoundIsValid = true;
               }
-
+              //TODO: Sound is wrong now, because we haven't updated it to go with the new frame loop.
               game_sound_output_buffer SoundBuffer = {};
               SoundBuffer.SamplesPerSecond = SoundOutput.SamplesPerSecond;
               SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
@@ -679,7 +679,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               Buffer.Pitch = GlobalBackBuffer.Pitch;
               GameUpdateAndRender(&GameMemory, NewInput, &Buffer, &SoundBuffer);
 
-              //NOTE: DirectSound output test
               if (SoundIsValid){
                 /* Data structure
                     [LEFT RIGHT] [LEFT RIGHT] [LEFT RIGHT] [LEFT RIGHT]
@@ -693,13 +692,18 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
               //TODO: NOT TESTED YET
               real32 SecondsElapsedForFrame = WorkSecondsElapsed;
-              if (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame){
-                while (SecondsElapsedForFrame < TargetSecondsElapsedPerFrame){
-
-                  if (SleepIsGranular){
-                    DWORD SleepMS =  DWORD(1000.0f * (TargetSecondsElapsedPerFrame - SecondsElapsedForFrame));
+              if (SecondsElapsedForFrame < TargetSecondsPerFrame){
+                if (SleepIsGranular){
+                  DWORD SleepMS =  DWORD(1000.0f * (TargetSecondsPerFrame - SecondsElapsedForFrame));
+                  if (SleepMS > 0){
                     Sleep(SleepMS);
+                  }
                 }
+
+                //TODO: This Assertion is not working 
+                // real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter, Win32GetWallClock());
+                // Assert(TestSecondsElapsedForFrame < TargetSecondsPerFrame);
+                while (SecondsElapsedForFrame < TargetSecondsPerFrame){
                   SecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter, Win32GetWallClock());
                 }
               }
@@ -718,7 +722,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               uint64_t EndCycleCount = __rdtsc();
               uint64_t CycleElapsed = EndCycleCount - LastCycleCount;
               LastCycleCount = EndCycleCount;
-              
+
 #if 1
               real32 FPS = (real32)(1000 / (real32)MSPerFrame);
               real32 MCPF = (real32)(CycleElapsed/(real32)(1000*1000));
