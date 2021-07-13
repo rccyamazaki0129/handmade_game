@@ -23,6 +23,8 @@ struct win32_sound_output{
   int SecondaryBufferSize;
   real32 tSine;
   int LatencySampleCount;
+  //TODO: Should Running sample index be in bytes as well 
+  //TODO: Math gets simpler if we add a "Bytes per second" field?
 };
 
 struct win32_debug_time_marker{

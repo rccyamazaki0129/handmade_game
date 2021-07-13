@@ -521,7 +521,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   WindowClass.lpszClassName = "HandmadeGameWindowClass";
 
   //TODO: How do we reliably query on this on windows?
-#define FrameOfAudioLatency 3
 #define MonitorRefreshHz 60
 #define GameUpdateHz (MonitorRefreshHz / 2)
   real32 TargetSecondsPerFrame = 1.0f / (real32)GameUpdateHz;
@@ -555,7 +554,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           SoundOutput.RunningSampleIndex = 0;
           SoundOutput.BytesPerSample = sizeof(int16_t)*2;
           SoundOutput.SecondaryBufferSize = SoundOutput.SamplesPerSecond*SoundOutput.BytesPerSample;
-          SoundOutput.LatencySampleCount = FrameOfAudioLatency*(SoundOutput.SamplesPerSecond / GameUpdateHz);
+          //TODO: Get rid of LatencySampleCount
+          SoundOutput.LatencySampleCount = 3*(SoundOutput.SamplesPerSecond / GameUpdateHz);
           Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
           Win32ClearBuffer(&SoundOutput);
           GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
@@ -597,8 +597,12 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             int DebugTimeMarkerIndex = 0;
             win32_debug_time_marker DebugTimeMarkers[GameUpdateHz / 2] = {};
             DWORD LastPlayCursor = 0;
+            DWORD LastWriteCursor = 0;
+
 
             bool SoundIsValid = false;
+            DWORD AudioLatencyBytes = 0;
+            real32 AudioLatencySeconds = 0;
 
             uint64_t LastCycleCount = __rdtsc();
 
@@ -725,6 +729,23 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               Buffer.Pitch = GlobalBackBuffer.Pitch;
               GameUpdateAndRender(&GameMemory, NewInput, &Buffer, &SoundBuffer);
 
+              /*
+              NOTE:
+              Here is how sound output computation works...
+
+              We define a safety value that is the number of samples we think our game update
+              may vary by (let's say up to 2ms)
+
+              When we wake up to write audio, we will look and see what the play cursor position is
+              and we will forecast ahead where we think the play cursor will be on the next frame boundary.
+
+              We will then look to see if the write cursor is before that by at least our safety value.
+              If it is, the target fill position is that frame boundary plus one frame,
+              This gives us perfect audio sync in the case of a card
+              that has low enough latency.
+
+              If the write cursor is _after_ that safety margine, then we assume we can never sync the audio perfectly, so we will write one frame's worth of audio plus the safety margin's worth of guard sample.
+              */
               if (SoundIsValid){
                 /* Data structure
                     [LEFT RIGHT] [LEFT RIGHT] [LEFT RIGHT] [LEFT RIGHT]
@@ -734,8 +755,16 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                 DWORD PlayCursor;
                 DWORD WriteCursor;
                 GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor);
+
+                DWORD UnwrappedWriteCursor = WriteCursor;
+                if (UnwrappedWriteCursor < PlayCursor){
+                  UnwrappedWriteCursor += SoundOutput.SecondaryBufferSize;
+                }
+                AudioLatencyBytes = UnwrappedWriteCursor - PlayCursor;
+                AudioLatencySeconds = ((real32)AudioLatencyBytes / (real32)SoundOutput.BytesPerSample) / (real32)SoundOutput.SamplesPerSecond;
+
                 char CharBuffer[256];
-                sprintf_s(CharBuffer, "LPC:%u BTL:%u TC:%u BTW:%u - PC:%u WC:%u\n", LastPlayCursor, BytesToLock, TargetCursor, BytesToWrite, PlayCursor, WriteCursor);
+                sprintf_s(CharBuffer, "LPC:%u BTL:%u TC:%u BTW:%u - PC:%u WC:%u DELTA:%u (%fs)\n", LastPlayCursor, BytesToLock, TargetCursor, BytesToWrite, PlayCursor, WriteCursor, AudioLatencyBytes, AudioLatencySeconds);
                 OutputDebugStringA(CharBuffer);
 #endif
                 Win32FillSoundBuffer(&SoundOutput, BytesToLock, BytesToWrite, &SoundBuffer);
@@ -755,8 +784,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
                 }
 
                 //TODO: This Assertion is not working
-                // real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter, Win32GetWallClock());
-                // Assert(TestSecondsElapsedForFrame < TargetSecondsPerFrame);
+                real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter, Win32GetWallClock());
+                if (TestSecondsElapsedForFrame < TargetSecondsPerFrame){
+
+                }
                 while (SecondsElapsedForFrame < TargetSecondsPerFrame){
                   SecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter, Win32GetWallClock());
                 }
@@ -780,6 +811,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               DWORD WriteCursor;
               if (GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor) == DS_OK){
                 LastPlayCursor = PlayCursor;
+                LastWriteCursor = WriteCursor;
+
                 if (!SoundIsValid){
                   SoundOutput.RunningSampleIndex = WriteCursor / SoundOutput.BytesPerSample;
                   SoundIsValid = true;
@@ -791,9 +824,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 #if HANDMADE_INTERNAL
               //NOTE: This is debug code
               {
+                Assert(DebugTimeMarkerIndex < ArrayCount(DebugTimeMarkers));
                 win32_debug_time_marker *Marker = &DebugTimeMarkers[DebugTimeMarkerIndex++];
 
-                if (DebugTimeMarkerIndex > ArrayCount(DebugTimeMarkers)){
+                if (DebugTimeMarkerIndex >= ArrayCount(DebugTimeMarkers)){
                   DebugTimeMarkerIndex = 0;
                 }
                 Marker->PlayCursor = PlayCursor;
