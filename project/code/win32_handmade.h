@@ -21,9 +21,10 @@ struct win32_sound_output{
   uint32_t RunningSampleIndex;
   int BytesPerSample;
   int SecondaryBufferSize;
+  DWORD SafetyBytes;
   real32 tSine;
   int LatencySampleCount;
-  //TODO: Should Running sample index be in bytes as well 
+  //TODO: Should Running sample index be in bytes as well
   //TODO: Math gets simpler if we add a "Bytes per second" field?
 };
 
