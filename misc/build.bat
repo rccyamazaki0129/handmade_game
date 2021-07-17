@@ -3,6 +3,7 @@ set CompilerFlags=-MT -nologo -EHsc -EHa- -GR- -Od -Oi -WX -W4 -wd4201 -wd4100 -
 set LinkerFlags=-incremental:no -opt:ref User32.lib Gdi32.lib Winmm.lib
 IF NOT EXIST z:\handmade_game\project\build mkdir z:\handmade_game\project\build
 pushd z:\handmade_game\project\build
-cl %CompilerFlags% z:\handmade_game\project\code\handmade.cpp -Fmhandmade.map /LD /link /EXPORT:GameGetSoundSamples /EXPORT:GameUpdateAndRender
+del *.pdb > NUL 2> NUL
+cl %CompilerFlags% z:\handmade_game\project\code\handmade.cpp -Fmhandmade.map /LD /link -incremental:no /PDB:handmade_%date:~0,4%%date:~5,2%%date:~8,2%_%time:~0,2%%time:~3,2%%time:~6,2%.pdb /EXPORT:GameGetSoundSamples /EXPORT:GameUpdateAndRender
 cl %CompilerFlags% z:\handmade_game\project\code\win32_handmade.cpp -Fmwin32_handmade.map /link %LinkerFlags%
 popd

@@ -1,6 +1,7 @@
 #include "handmade.h"
 
-void GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer, int ToneHz){
+void GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer, int ToneHz)
+{
   int16_t ToneVolume = 6000;
   int WavePeriod = SoundBuffer->SamplesPerSecond / ToneHz;
 
@@ -20,7 +21,8 @@ void GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffe
 }
 
 
-void RenderWeirdGradient(game_offscreen_buffer *Buffer, int XOffset, int YOffset){
+void RenderWeirdGradient(game_offscreen_buffer *Buffer, int XOffset, int YOffset)
+{
   //TODO: Let's see what the optimizer does
   uint8_t *Row = (uint8_t *)Buffer->Memory;
 
@@ -36,7 +38,7 @@ void RenderWeirdGradient(game_offscreen_buffer *Buffer, int XOffset, int YOffset
       */
       uint8_t Blue = (uint8_t)(x + XOffset);
       uint8_t Green = (uint8_t)(y + YOffset);
-      uint8_t Red = uint8_t((x + y) / 16);
+      uint8_t Red = uint8_t((x + y) / 8);
 
       *Pixel++ = ((Red << 16) | (Green << 8) | Blue);
     }
@@ -44,8 +46,8 @@ void RenderWeirdGradient(game_offscreen_buffer *Buffer, int XOffset, int YOffset
   }
 }
 
-extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender){
-
+extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
+{
   Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) == (ArrayCount(Input->Controllers[0].Buttons)));
   Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
 
@@ -92,18 +94,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender){
   RenderWeirdGradient(Buffer, GameState->XOffset, GameState->YOffset);
 }
 
-extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples){
+extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
+{
   game_state *GameState = (game_state *)Memory->PermanentStorage;
   GameOutputSound(GameState, SoundBuffer, GameState->ToneHz);
 }
-
-#if HANDMADE_WIN32
-#include "windows.h"
-BOOL WINAPI DllMain(
-  HINSTANCE hinstDLL,
-  DWORD fdwReason,
-  LPVOID lpvReserved
-){
-  return true;
-}
-#endif
