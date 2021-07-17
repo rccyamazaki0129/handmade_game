@@ -132,8 +132,10 @@ struct win32_game_code{
 internal win32_game_code Win32LoadGameCode(){
   win32_game_code Result = {};
 
-  CopyFile("handmade.exe", "handmade_temp.dll", false);
-  
+  //TODO: Need to get the proper path here
+  //TODO: Automatic determination of when updates are necessary
+  CopyFile("handmade.dll", "handmade_temp.dll", false);
+
   Result.GameCodeDLL = LoadLibraryA("handmade_temp.dll");
   if (Result.GameCodeDLL){
     Result.UpdateAndRender = (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
