@@ -324,7 +324,14 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
       break;
     }
     case WM_ACTIVATEAPP:{
-      OutputDebugStringA("WM_ACTIVATEAPP\n");
+      if (WParam)
+      {
+        SetLayeredWindowAttributes(Window, RGB(0,0,0), 255, LWA_ALPHA);
+      }
+      else
+      {
+        SetLayeredWindowAttributes(Window, RGB(0,0,0), 64, LWA_ALPHA);
+      }
       break;
     }
     case WM_SYSKEYDOWN:
@@ -482,6 +489,7 @@ internal void Win32PlayBackInput(win32_state *Win32State, game_input *NewInput)
       int PlayingIndex = Win32State->InputPlayingIndex;
       Win32EndInputPlayBack(Win32State);
       Win32BeginInputPlayBack(Win32State, PlayingIndex);
+      ReadFile(Win32State->PlayBackHandle, NewInput, sizeof(*NewInput), &BytesRead, 0);
     }
   }
 }
@@ -709,7 +717,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
   //TODO: Check if CS_OWNDC, CS_HREDRAW, CS_VREDRAW still matter
-  WindowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
+  WindowClass.style = CS_HREDRAW|CS_VREDRAW;
   WindowClass.lpfnWndProc = Win32MainWindowCallback;
   WindowClass.hInstance = Instance;
   // WindowClass.hIcon;
@@ -723,7 +731,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
   if (RegisterClass(&WindowClass)){
     HWND Window = CreateWindowEx(
-      0,
+      WS_EX_TOPMOST|WS_EX_LAYERED,
       WindowClass.lpszClassName,
       "HandmadeGameWindowClass",
       WS_OVERLAPPEDWINDOW|WS_VISIBLE,
@@ -739,8 +747,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           //succeeded creating window
           //NOTE: Since we specified CS_OWNDC, we can just get one DC and
           //      use it forever because we are not sharing it with anyone
-          HDC DeviceContext = GetDC(Window);
-
           //NOTE: Graphics test
           int XOffset = 0;
           int YOffset = 0;
@@ -784,7 +790,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 #endif
           game_memory GameMemory = {};
           GameMemory.PermanentStorageSize = Megabytes(64);
-          GameMemory.TransientStorageSize = Gigabytes(1);
+          GameMemory.TransientStorageSize = Megabytes(128);
           GameMemory.DEBUGPlatformFreeFileMemory = DEBUGPlatformFreeFileMemory;
           GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
           GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
@@ -1066,7 +1072,9 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               Win32DebugSyncDisplay(&GlobalBackBuffer, ArrayCount(DebugTimeMarkers), DebugTimeMarkers, DebugTimeMarkerIndex - 1, &SoundOutput, TargetSecondsPerFrame);
 #endif
 
+              HDC DeviceContext = GetDC(Window);
               Win32DisplayBufferInWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+              ReleaseDC(Window, DeviceContext);
 
               FlipWallClock = Win32GetWallClock();
 
