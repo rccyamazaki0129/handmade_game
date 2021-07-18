@@ -77,10 +77,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *GameState = (game_state *)Memory->PermanentStorage;
   if (!Memory->IsInitialized){
     char *FileName = __FILE__;
-    debug_read_file_result File = Memory->DEBUGPlatformReadEntireFile(FileName);
+    debug_read_file_result File = Memory->DEBUGPlatformReadEntireFile(Thread, FileName);
     if (File.Contents){
-      Memory->DEBUGPlatformWriteEntireFile("z:/handmade_game/project/data/test.out", File.ContentsSize, File.Contents);
-      Memory->DEBUGPlatformFreeFileMemory(File.Contents);
+      Memory->DEBUGPlatformWriteEntireFile(Thread, "z:/handmade_game/project/data/test.out", File.ContentsSize, File.Contents);
+      Memory->DEBUGPlatformFreeFileMemory(Thread, File.Contents);
     }
 
     GameState->ToneHz = 256;
@@ -132,6 +132,15 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   RenderWeirdGradient(Buffer, GameState->XOffset, GameState->YOffset);
   RenderPlayer(Buffer, GameState->PlayerX, GameState->PlayerY);
+
+  for (int ButtonIndex = 0; ButtonIndex < ArrayCount(Input->MouseButtons); ++ButtonIndex)
+  {
+    if (Input->MouseButtons[ButtonIndex].EndedDown)
+    {
+      RenderPlayer(Buffer, 10 + 20*ButtonIndex, 10);
+    }
+  }
+
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
