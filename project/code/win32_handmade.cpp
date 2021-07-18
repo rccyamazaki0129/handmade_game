@@ -429,7 +429,64 @@ internal real32 Win32ProcessXInputStickValue(SHORT Value, SHORT DeadZoneThreshol
   return Result;
 }
 
-internal void Win32ProcessPendingMessages(game_controller_input *KeyboardController){
+internal void Win32BeginRecordingInput(win32_state *Win32State, int InputRecordingIndex)
+{
+  Win32State->InputRecordingIndex = InputRecordingIndex;
+  char *FileName = "foo.rei";
+  Win32State->RecordingHandle = CreateFileA(FileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+
+  DWORD BytesToWrite = (DWORD)Win32State->TotalSize;
+  Assert(Win32State->TotalSize == BytesToWrite);
+  DWORD BytesWritten;
+  WriteFile(Win32State->RecordingHandle, Win32State->GameMemoryBlock, BytesToWrite, &BytesWritten, 0);
+}
+
+internal void Win32EndRecordingInput(win32_state *Win32State)
+{
+  CloseHandle(Win32State->RecordingHandle);
+  Win32State->InputRecordingIndex = 0;
+}
+
+internal void Win32BeginInputPlayBack(win32_state *Win32State, int InputPlayingIndex)
+{
+  Win32State->InputPlayingIndex = InputPlayingIndex;
+  char *FileName = "foo.rei";
+  Win32State->PlayBackHandle = CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+
+  DWORD BytesToRead = (DWORD)Win32State->TotalSize;
+  Assert(Win32State->TotalSize == BytesToRead);
+  DWORD BytesRead;
+  ReadFile(Win32State->PlayBackHandle, Win32State->GameMemoryBlock, BytesToRead, &BytesRead, 0);
+}
+
+internal void Win32EndInputPlayBack(win32_state *Win32State)
+{
+  CloseHandle(Win32State->PlayBackHandle);
+  Win32State->InputPlayingIndex = 0;
+}
+
+internal void Win32RecordInput(win32_state *Win32State, game_input *NewInput)
+{
+  DWORD BytesWritten;
+  WriteFile(Win32State->RecordingHandle, NewInput, sizeof(*NewInput), &BytesWritten, 0);
+}
+
+internal void Win32PlayBackInput(win32_state *Win32State, game_input *NewInput)
+{
+  DWORD BytesRead = 0;
+  if (ReadFile(Win32State->PlayBackHandle, NewInput, sizeof(*NewInput), &BytesRead, 0))
+  {
+    if (BytesRead == 0)
+    {
+      //NOTE: We've hit the end of the stream
+      int PlayingIndex = Win32State->InputPlayingIndex;
+      Win32EndInputPlayBack(Win32State);
+      Win32BeginInputPlayBack(Win32State, PlayingIndex);
+    }
+  }
+}
+
+internal void Win32ProcessPendingMessages(win32_state *Win32State, game_controller_input *KeyboardController){
   MSG Message;
 
   while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)){
@@ -483,6 +540,23 @@ internal void Win32ProcessPendingMessages(game_controller_input *KeyboardControl
           else if (VKCode == VK_SPACE){
             Win32ProcessKeyboardMessage(&KeyboardController->Back, IsDown);
           }
+#if HANDMADE_INTERNAL
+          else if (VKCode == 'L')
+          {
+            if (IsDown)
+            {
+              if (Win32State->InputRecordingIndex == 0)
+              {
+                Win32BeginRecordingInput(Win32State, 1);
+              }
+              else
+              {
+                Win32EndRecordingInput(Win32State);
+                Win32BeginInputPlayBack(Win32State, 1);
+              }
+            }
+          }
+#endif
         }
         bool AltKeyWasDown = ((Message.lParam & (1 << 29)) != 0);
         if ((VKCode == VK_F4) && AltKeyWasDown){
@@ -684,6 +758,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           Win32InitDSound(Window, SoundOutput.SamplesPerSecond, SoundOutput.SecondaryBufferSize);
           Win32ClearBuffer(&SoundOutput);
           GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+
+          win32_state Win32State = {};
           GlobalRunning = true;
 #if 0
           //NOTE: This tests the PlayCursor/WriteCursor update frequency
@@ -713,8 +789,9 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
           GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
 
-          uint64_t TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
-          GameMemory.PermanentStorage = (int16_t*)VirtualAlloc(BaseAddress, (size_t)TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+          Win32State.TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
+          Win32State.GameMemoryBlock = (int16_t*)VirtualAlloc(BaseAddress, (size_t)Win32State.TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+          GameMemory.PermanentStorage = Win32State.GameMemoryBlock;
           GameMemory.TransientStorage = ((int8_t*)GameMemory.PermanentStorage + GameMemory.PermanentStorageSize);
 
           if (Samples && GameMemory.PermanentStorage && GameMemory.TransientStorage){
@@ -757,7 +834,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               for (int ButtonIndex = 0; ButtonIndex < ArrayCount(NewKeyboardController->Buttons); ++ButtonIndex){
                 NewKeyboardController->Buttons[ButtonIndex].EndedDown = OldKeyboardController->Buttons[ButtonIndex].EndedDown;
               }
-              Win32ProcessPendingMessages(NewKeyboardController);
+              Win32ProcessPendingMessages(&Win32State, NewKeyboardController);
 
               //TODO: Need to not pull disconnected controllers to avoid xinput frame rate hit on older libraries
               //TODO: should we pull this more frequently
@@ -840,6 +917,16 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               Buffer.Width = GlobalBackBuffer.Width;
               Buffer.Height = GlobalBackBuffer.Height;
               Buffer.Pitch = GlobalBackBuffer.Pitch;
+              Buffer.BytesPerPixel = GlobalBackBuffer.BytesPerPixel;
+
+              if (Win32State.InputRecordingIndex)
+              {
+                Win32RecordInput(&Win32State, NewInput);
+              }
+              if (Win32State.InputPlayingIndex)
+              {
+                Win32PlayBackInput(&Win32State, NewInput);
+              }
               Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
 
               LARGE_INTEGER AudioWallClock = Win32GetWallClock();
