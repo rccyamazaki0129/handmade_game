@@ -34,7 +34,14 @@ internal int32_t RoundReal32ToInt32(real32 Real32)
   return Result;
 }
 
-internal void DrawRectangle(game_offscreen_buffer *Buffer, real32 RealMinX, real32 RealMinY, real32 RealMaxX, real32 RealMaxY, uint32_t Color)
+internal uint32_t RoundReal32ToUInt32(real32 Real32)
+{
+  uint32_t Result = (uint32_t)(Real32 + 0.5f);
+  //TODO: Intrinsic???
+  return Result;
+}
+
+internal void DrawRectangle(game_offscreen_buffer *Buffer, real32 RealMinX, real32 RealMinY, real32 RealMaxX, real32 RealMaxY, real32 R, real32 G, real32 B)
 {
   int32_t MinX = RoundReal32ToInt32(RealMinX);
   int32_t MinY = RoundReal32ToInt32(RealMinY);
@@ -57,6 +64,9 @@ internal void DrawRectangle(game_offscreen_buffer *Buffer, real32 RealMinX, real
   {
     MaxY = Buffer->Height;
   }
+  //BIT PATTERN: 0x AA RR GG BB
+  uint32_t Color = (RoundReal32ToInt32(R * 255.0f) << 16) | (RoundReal32ToInt32(G * 255.0f) << 8) | (RoundReal32ToInt32(B * 255.0f));
+
   uint8_t *EndOfBuffer = (uint8_t*)Buffer->Memory + Buffer->Pitch*Buffer->Height;
 
   uint8_t *Row = ((uint8_t *)(Buffer->Memory) + MinX*Buffer->BytesPerPixel + MinY*Buffer->Pitch);
@@ -91,14 +101,87 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if (Controller->IsAnalog)
     {
       //NOTE: use analog movement tuning
+      GameState->PlayerX += (int)(1.0f*(Controller->StickAverageX));
+      GameState->PlayerY += (int)(-1.0f*(Controller->StickAverageY));
     }
     else
     {
       //NOTE: use digital movement tuning
+      real32 dPlayerX = 0.0f; //pix/sec
+      real32 dPlayerY = 0.0f; //pix/sec
+
+      if (Controller->MoveUp.EndedDown)
+      {
+        dPlayerY = -1.0f;
+      }
+      if (Controller->MoveDown.EndedDown)
+      {
+        dPlayerY = 1.0f;
+      }
+      if (Controller->MoveLeft.EndedDown)
+      {
+        dPlayerX = -1.0f;
+      }
+      if (Controller->MoveRight.EndedDown)
+      {
+        dPlayerX = 1.0f;
+      }
+      dPlayerX *= 120.0f;
+      dPlayerY *= 120.0f;
+      //TODO: Diagonal will be faster. Fix once we have vector.
+      GameState->PlayerX += Input->dtForFrame*dPlayerX;
+      GameState->PlayerY += Input->dtForFrame*dPlayerY;
     }
   }
-  DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 0x000000FF);
-  DrawRectangle(Buffer, 100.0f, 10.0f, 130.0f, 40.0f, 0xFF00FF00);
+
+  uint32_t TileMap[9][17] =
+  {
+    {1, 1, 1, 1,   1, 1, 1, 1,   0,   1, 1, 1, 1,   1, 1, 1, 1},
+    {1, 1, 0, 0,   0, 0, 0, 0,   0,   0, 0, 0, 0,   0, 1, 0, 1},
+    {1, 0, 0, 1,   0, 1, 0, 0,   0,   1, 0, 1, 1,   0, 0, 0, 1},
+    {1, 0, 1, 0,   0, 0, 1, 0,   0,   0, 0, 0, 0,   0, 0, 1, 1},
+    {0, 0, 0, 0,   0, 0, 1, 0,   1,   0, 1, 1, 0,   0, 0, 0, 0},
+    {1, 0, 1, 0,   1, 0, 0, 0,   0,   0, 0, 0, 0,   0, 1, 0, 1},
+    {1, 0, 1, 0,   0, 0, 0, 0,   0,   0, 1, 0, 0,   0, 0, 0, 1},
+    {1, 0, 0, 0,   0, 0, 0, 0,   0,   0, 0, 1, 0,   0, 0, 1, 1},
+    {1, 1, 1, 1,   1, 1, 1, 1,   0,   1, 1, 1, 1,   1, 1, 1, 1},
+  };
+
+  real32 UpperLeftX = -30;
+  real32 UpperLeftY = 0;
+  real32 TileWidth = 60;
+  real32 TileHeight = 60;
+
+  DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 1.0f, 0.0f, 1.0f);
+
+  for (int Row = 0; Row < 9; ++Row)
+  {
+    for (int Column = 0; Column < 17; ++Column)
+    {
+      uint32_t TileID = TileMap[Row][Column];
+      real32 Gray = 0.3f;
+      if (TileID)
+      {
+        Gray = 0.8f;
+      }
+      real32 MinX = UpperLeftX + ((real32)Column) * TileWidth;
+      real32 MinY = UpperLeftY + ((real32)Row) * TileHeight;
+      real32 MaxX = MinX + TileWidth;
+      real32 MaxY = MinY + TileHeight;
+      DrawRectangle(Buffer, MinX, MinY, MaxX, MaxY, Gray, Gray, Gray);
+    }
+  }
+
+  real32 PlayerR = 0.0f;
+  real32 PlayerG = 1.0f;
+  real32 PlayerB = 1.0f;
+  real32 PlayerWidth = 0.75f * TileWidth;
+  real32 PlayerHeight = TileHeight;
+  real32 PlayerLeft = GameState->PlayerX - 0.5f * PlayerWidth;
+  real32 PlayerTop = GameState->PlayerY - PlayerHeight;
+
+  DrawRectangle(Buffer, PlayerLeft, PlayerTop, PlayerLeft + PlayerWidth, PlayerTop + PlayerHeight, PlayerR, PlayerG, PlayerB);
+
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)

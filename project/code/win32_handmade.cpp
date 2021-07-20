@@ -777,13 +777,13 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   WindowClass.hInstance = Instance;
   // WindowClass.hIcon;
   // LPCSTR    lpszMenuName;
-  WindowClass.lpszClassName = "HandmadeGameWindowClass";
+  WindowClass.lpszClassName = "HandmadeWindowClass";
 
   if (RegisterClass(&WindowClass)){
     HWND Window = CreateWindowEx(
       0,//WS_EX_TOPMOST|WS_EX_LAYERED,
       WindowClass.lpszClassName,
-      "HandmadeGameWindowClass",
+      "HandmadeWindowClass",
       WS_OVERLAPPEDWINDOW|WS_VISIBLE,
       CW_USEDEFAULT,//x
       CW_USEDEFAULT,//y
@@ -889,7 +889,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             game_input Input[2] = {};
             game_input *NewInput = &Input[0];
             game_input *OldInput = &Input[1];
-            NewInput->SecondsToAdvanceOverUpdate = TargetSecondsPerFrame;
 
             LARGE_INTEGER LastCounter = Win32GetWallClock();
             LARGE_INTEGER FlipWallClock = Win32GetWallClock();
@@ -907,13 +906,16 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             uint64_t LastCycleCount = __rdtsc();
 
             while (GlobalRunning){
+
+              NewInput->dtForFrame = TargetSecondsPerFrame;
+
               FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
 
               // if (LoadCounter++ > 120)
               if (CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
               {
+                Sleep(500);//IMPORTANT: Build another DLL takes a while, on the other hand, loading it is too quick
                 Win32UnloadGameCode(&Game);
-                Sleep(30);//IMPORTANT: Build another DLL takes a while, on the other hand, loading it is too quick
                 Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath);
                 LoadCounter = 0;
               }
@@ -1198,7 +1200,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               NewInput = OldInput;
               OldInput = Temp;
 
-#if 0
+#if 1
               uint64_t EndCycleCount = __rdtsc();
               uint64_t CycleElapsed = EndCycleCount - LastCycleCount;
               LastCycleCount = EndCycleCount;
