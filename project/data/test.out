@@ -130,8 +130,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->tJump -= 0.033f;
   }
 
-  RenderWeirdGradient(Buffer, GameState->XOffset, GameState->YOffset);
   RenderPlayer(Buffer, GameState->PlayerX, GameState->PlayerY);
+  RenderPlayer(Buffer, Input->MouseX, Input->MouseY);
 
   for (int ButtonIndex = 0; ButtonIndex < ArrayCount(Input->MouseButtons); ++ButtonIndex)
   {

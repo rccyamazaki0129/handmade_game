@@ -769,7 +769,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
   Win32LoadXInput();
   WNDCLASSA WindowClass = {};
-  Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
+  Win32ResizeDIBSection(&GlobalBackBuffer, 960, 540);
 
   //TODO: Check if CS_OWNDC, CS_HREDRAW, CS_VREDRAW still matter
   WindowClass.style = CS_HREDRAW|CS_VREDRAW;
@@ -889,6 +889,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             game_input Input[2] = {};
             game_input *NewInput = &Input[0];
             game_input *OldInput = &Input[1];
+            NewInput->SecondsToAdvanceOverUpdate = TargetSecondsPerFrame;
 
             LARGE_INTEGER LastCounter = Win32GetWallClock();
             LARGE_INTEGER FlipWallClock = Win32GetWallClock();
