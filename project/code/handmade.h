@@ -171,6 +171,25 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 //
 //
 //
+
+struct tile_map
+{
+  int32_t CountX;
+  int32_t CountY;
+  real32 UpperLeftX;
+  real32 UpperLeftY;
+  real32 TileWidth;
+  real32 TileHeight;
+  uint32_t *Tiles;
+};
+
+struct world
+{
+  int32_t TileMapCountX;
+  int32_t TileMapCountY;
+  tile_map *TileMaps;
+};
+
 struct game_state
 {
   real32 PlayerX;
