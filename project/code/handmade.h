@@ -51,14 +51,19 @@ inline game_controller_input *GetController(game_input *Input, int ControllerInd
 
 struct canonical_position
 {
+  /*
+  TODO: Take the tile map x, y and the tile x, y and pack them into single 32 bit values for x, y where there is some low bits for the tile index, and the high bits are for the tile page
+  */
   int32_t TileMapX;
   int32_t TileMapY;
 
   int32_t TileX;
   int32_t TileY;
-  //NOTE: This is tile-relative X and Y
-  real32 X;
-  real32 Y;
+  /*
+  TODO: Convert these to math-friendly, resolution independent representaion of world units relative to a tile
+  */
+  real32 TileRelX;
+  real32 TileRelY;
 };
 
 struct raw_position
@@ -77,12 +82,12 @@ struct tile_map
 
 struct world
 {
+  real32 TileSideInMeters;
+  int32_t TileSideInPixles;
   int32_t CountX;
   int32_t CountY;
   real32 UpperLeftX;
   real32 UpperLeftY;
-  real32 TileWidth;
-  real32 TileHeight;
 
   int32_t TileMapCountX;
   int32_t TileMapCountY;
