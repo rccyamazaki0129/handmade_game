@@ -5,6 +5,7 @@
 
 typedef float real32;
 typedef double real64;
+typedef size_t memory_index;
 
 struct thread_context
 {

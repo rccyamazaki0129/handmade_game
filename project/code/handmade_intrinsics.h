@@ -6,13 +6,13 @@
 
 inline int32_t RoundReal32ToInt32(real32 Real32)
 {
-  int32_t Result = (int32_t)(Real32 + 0.5f);
+  int32_t Result = (int32_t)roundf(Real32);
   return Result;
 }
 
 inline uint32_t RoundReal32ToUInt32(real32 Real32)
 {
-  uint32_t Result = (uint32_t)(Real32 + 0.5f);
+  uint32_t Result = (uint32_t)roundf(Real32);
   //TODO: Intrinsic???
   return Result;
 }
