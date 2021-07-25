@@ -54,25 +54,19 @@ struct canonical_position
   /*
   TODO: Take the tile map x, y and the tile x, y and pack them into single 32 bit values for x, y where there is some low bits for the tile index, and the high bits are for the tile page
   */
+#if 1
   int32_t TileMapX;
   int32_t TileMapY;
 
   int32_t TileX;
   int32_t TileY;
-  /*
-  TODO: Convert these to math-friendly, resolution independent representaion of world units relative to a tile
-  */
+#else
+  uint32_t _TileX;
+  uint32_t _TileY;
+#endif
+  //TODO: Should these be from the center of a tile?
   real32 TileRelX;
   real32 TileRelY;
-};
-
-struct raw_position
-{
-  int32_t TileMapX;
-  int32_t TileMapY;
-  //NOTE:  This is tile-map relative X and Y
-  real32 X;
-  real32 Y;
 };
 
 struct tile_map
@@ -84,6 +78,7 @@ struct world
 {
   real32 TileSideInMeters;
   int32_t TileSideInPixles;
+  real32 MetersToPixels;
   int32_t CountX;
   int32_t CountY;
   real32 UpperLeftX;
@@ -96,11 +91,7 @@ struct world
 
 struct game_state
 {
-  int32_t PlayerTileMapX;
-  int32_t PlayerTileMapY;
-
-  real32 PlayerX;
-  real32 PlayerY;
+  canonical_position PlayerP;
 };
 
 #endif
