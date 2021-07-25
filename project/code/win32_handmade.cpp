@@ -498,6 +498,7 @@ internal void Win32GetInputFileLocation(win32_state *State, bool InputStream, in
 
 internal win32_replay_buffer *Win32GetReplayBuffer(win32_state *State, unsigned int Index)
 {
+  Assert(Index > 0);
   Assert(Index < ArrayCount(State->ReplayBuffers));
   win32_replay_buffer *Result = &State->ReplayBuffers[Index];
   return Result;
@@ -862,6 +863,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
           GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
 
           //TODO: Use MEM_LARGE_PAGES and call adjust token privileges
+          //TODO: TransientStrage needs to be broken up into game transient and cache transient, and only the former need be saved for state playback.
           Win32State.TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
           Win32State.GameMemoryBlock = (int16_t*)VirtualAlloc(BaseAddress, (size_t)Win32State.TotalSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
           GameMemory.PermanentStorage = Win32State.GameMemoryBlock;

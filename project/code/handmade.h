@@ -49,49 +49,52 @@ inline game_controller_input *GetController(game_input *Input, int ControllerInd
 //
 //
 
-struct canonical_position
+struct tile_chunk_position
+{
+  uint32_t TileChunkX;
+  uint32_t TileChunkY;
+
+  uint32_t RelTileX;
+  uint32_t RelTileY;
+};
+
+struct world_position
 {
   /*
   TODO: Take the tile map x, y and the tile x, y and pack them into single 32 bit values for x, y where there is some low bits for the tile index, and the high bits are for the tile page
   */
-#if 1
-  int32_t TileMapX;
-  int32_t TileMapY;
+  uint32_t AbsTileX;
+  uint32_t AbsTileY;
 
-  int32_t TileX;
-  int32_t TileY;
-#else
-  uint32_t _TileX;
-  uint32_t _TileY;
-#endif
   //TODO: Should these be from the center of a tile?
   real32 TileRelX;
   real32 TileRelY;
 };
 
-struct tile_map
+struct tile_chunk
 {
   uint32_t *Tiles;
 };
 
 struct world
 {
+  uint32_t ChunkShift;
+  uint32_t ChunkMask;
+  uint32_t ChunkDim;
+
   real32 TileSideInMeters;
   int32_t TileSideInPixles;
   real32 MetersToPixels;
-  int32_t CountX;
-  int32_t CountY;
-  real32 UpperLeftX;
-  real32 UpperLeftY;
 
-  int32_t TileMapCountX;
-  int32_t TileMapCountY;
-  tile_map *TileMaps;
+  int32_t TileChunkCountX;
+  int32_t TileChunkCountY;
+
+  tile_chunk *TileChunks;
 };
 
 struct game_state
 {
-  canonical_position PlayerP;
+  world_position PlayerP;
 };
 
 #endif
