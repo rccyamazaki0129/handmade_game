@@ -71,6 +71,35 @@ internal void DrawRectangle(game_offscreen_buffer *Buffer, real32 RealMinX, real
   }
 }
 
+#pragma pack(push, 1)
+struct bitmap_header
+{
+  uint16_t FileType;
+  uint32_t FileSize;
+  uint16_t Reserved1;
+  uint16_t Reserved2;
+  uint32_t BitmapOffset;
+  uint32_t Size;
+  int32_t Width;
+  int32_t Height;
+  uint16_t Planes;
+  uint16_t BitsPerPixel;
+};
+#pragma pack(pop)
+
+internal uint32_t * DEBUGLoadBMP(thread_context *Thread, debug_platform_read_entire_file *ReadEntireFile, char *FileName)
+{
+  uint32_t *Result = 0;
+  debug_read_file_result ReadResult = ReadEntireFile(Thread, FileName);
+  if (ReadResult.ContentsSize != 0)
+  {
+    bitmap_header *Header = (bitmap_header *)ReadResult.Contents;
+    uint32_t *Pixels = (uint32_t *)((uint8_t *)ReadResult.Contents + Header->BitmapOffset);
+    Result = Pixels;
+  }
+  return Result;
+}
+
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) == (ArrayCount(Input->Controllers[0].Buttons)));
@@ -82,10 +111,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *GameState = (game_state *)Memory->PermanentStorage;
   if (!Memory->IsInitialized)
   {
+    GameState->PixelPointer = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "view.bmp");
     GameState->PlayerP.AbsTileX = 1;
     GameState->PlayerP.AbsTileY = 3;
-    GameState->PlayerP.TileRelX = 5.0f;
-    GameState->PlayerP.TileRelY = 5.0f;
+    GameState->PlayerP.OffsetX = 5.0f;
+    GameState->PlayerP.OffsetY = 5.0f;
     InitializeArena(&GameState->WorldArena, Memory->PermanentStorageSize - sizeof(game_state), (uint8_t *)Memory->PermanentStorage + sizeof(game_state));
 
     GameState->World = PushStruct(&GameState->WorldArena, world);
@@ -133,8 +163,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         RandomChoice = RandomNumberTable[RandomNumberIndex++] % 3;
       }
 
+      bool CreatedZDoor = false;
+
       if (RandomChoice == 2)
       {
+        CreatedZDoor = true;
         if (AbsTileZ == 0)
         {
           DoorUp = true;
@@ -196,15 +229,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       DoorLeft = DoorRight;
       DoorBottom = DoorTop;
-      if (DoorUp)
+      if (CreatedZDoor)
       {
-        DoorDown = true;
-        DoorUp = false;
-      }
-      else if (DoorDown)
-      {
-        DoorDown = false;
-        DoorUp = true;
+        DoorDown = !DoorDown;
+        DoorUp = !DoorUp;
       }
       else
       {
@@ -278,8 +306,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
       dPlayerX *= 30.0f;
       dPlayerY *= 30.0f;
-      GameState->PlayerP.TileRelX += Input->dtForFrame*dPlayerX;
-      GameState->PlayerP.TileRelY += Input->dtForFrame*dPlayerY;
+      GameState->PlayerP.OffsetX += Input->dtForFrame*dPlayerX;
+      GameState->PlayerP.OffsetY += Input->dtForFrame*dPlayerY;
     }
     else
     {
@@ -312,24 +340,36 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       dPlayerY *= PlayerSpeed;
       //TODO: Diagonal will be faster. Fix once we have vector.
       tile_map_position NewPlayerP = GameState->PlayerP;
-      NewPlayerP.TileRelX += Input->dtForFrame*dPlayerX;
-      NewPlayerP.TileRelY += Input->dtForFrame*dPlayerY;
+      NewPlayerP.OffsetX += Input->dtForFrame*dPlayerX;
+      NewPlayerP.OffsetY += Input->dtForFrame*dPlayerY;
       NewPlayerP = RecanonicalizePosition(TileMap, NewPlayerP);
       //TODO: Delta function that auto-recanonicalizes
 
       tile_map_position PlayerLeft = NewPlayerP;
-      PlayerLeft.TileRelX -= 0.5f * PlayerWidth;
+      PlayerLeft.OffsetX -= 0.5f * PlayerWidth;
       PlayerLeft = RecanonicalizePosition(TileMap, PlayerLeft);
 
       tile_map_position PlayerRight = NewPlayerP;
-      PlayerRight.TileRelX += 0.5f * PlayerWidth;
+      PlayerRight.OffsetX += 0.5f * PlayerWidth;
       PlayerRight = RecanonicalizePosition(TileMap, PlayerRight);
 
       if (IsTileMapPointEmpty(TileMap, NewPlayerP)
           && IsTileMapPointEmpty(TileMap, PlayerLeft)
           && IsTileMapPointEmpty(TileMap, PlayerRight))
       {
-            GameState->PlayerP = NewPlayerP;
+        if (!AreOnSameTile(&GameState->PlayerP, &NewPlayerP))
+        {
+          uint32_t NewTileValue = GetTileValue(TileMap, NewPlayerP);
+          if (NewTileValue == 3)
+          {
+            ++NewPlayerP.AbsTileZ;
+          }
+          else if (NewTileValue == 4)
+          {
+            --NewPlayerP.AbsTileZ;
+          }
+        }
+        GameState->PlayerP = NewPlayerP;
       }
     }
   }
@@ -363,8 +403,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           Gray = 0.1f;
         }
 
-        real32 CenX = ScreenCenterX - MetersToPixels * GameState->PlayerP.TileRelX + ((real32)RelColumn) * TileSideInPixles;
-        real32 CenY = ScreenCenterY + MetersToPixels * GameState->PlayerP.TileRelY - ((real32)RelRow) * TileSideInPixles;
+        real32 CenX = ScreenCenterX - MetersToPixels * GameState->PlayerP.OffsetX + ((real32)RelColumn) * TileSideInPixles;
+        real32 CenY = ScreenCenterY + MetersToPixels * GameState->PlayerP.OffsetY - ((real32)RelRow) * TileSideInPixles;
         real32 MinX = CenX - 0.5f * TileSideInPixles;
         real32 MinY = CenY - 0.5f * TileSideInPixles;
         real32 MaxX = CenX + 0.5f * TileSideInPixles;
@@ -382,6 +422,18 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 PlayerTop = ScreenCenterY - MetersToPixels * PlayerHeight;
 
   DrawRectangle(Buffer, PlayerLeft, PlayerTop, PlayerLeft + MetersToPixels * PlayerWidth, PlayerTop + MetersToPixels * PlayerHeight, PlayerR, PlayerG, PlayerB);
+
+#if 0
+  uint32_t *Source = GameState->PixelPointer;
+  uint32_t *Dest = (uint32_t *)Buffer->Memory;
+  for (int32_t Y = 0; Y < Buffer->Height; ++Y)
+  {
+    for (int32_t X = 0; X < Buffer->Width; ++X)
+    {
+      *Dest++ = *Source++;
+    }
+  }
+#endif
 
 }
 

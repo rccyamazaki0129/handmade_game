@@ -1,28 +1,3 @@
-inline void RecanonicalizeCoord(tile_map *TileMap, uint32_t *Tile, real32 *TileRel)
-{
-  //TODO: Need to do something that doesn't use the divide/multiply method for recanonicalizing because this can end up rounding back on to the tile you just came from.
-
-  //NOTE:  TileMap is assumed to be toroidal, if you step off one end you come back on the other
-  int32_t Offset = RoundReal32ToInt32(*TileRel / TileMap->TileSideInMeters);
-  *Tile += Offset;
-  *TileRel -= Offset * TileMap->TileSideInMeters;
-
-  //TODO: Fix floating point math so this can be <
-  Assert(*TileRel >= -0.5f*TileMap->TileSideInMeters);
-  Assert(*TileRel <= 0.5f*TileMap->TileSideInMeters);
-
-}
-
-inline tile_map_position RecanonicalizePosition(tile_map *TileMap, tile_map_position Pos)
-{
-  tile_map_position Result = Pos;
-
-  RecanonicalizeCoord(TileMap, &Result.AbsTileX, &Result.TileRelX);
-  RecanonicalizeCoord(TileMap, &Result.AbsTileY, &Result.TileRelY);
-
-  return Result;
-}
-
 inline tile_chunk* GetTileChunk(tile_map *TileMap, uint32_t TileChunkX, uint32_t TileChunkY, uint32_t TileChunkZ)
 {
   tile_chunk *TileChunk = 0;
@@ -80,8 +55,6 @@ inline tile_chunk_position GetChunkPositionFor(tile_map *TileMap, uint32_t AbsTi
 
 internal uint32_t GetTileValue(tile_map *TileMap, uint32_t AbsTileX, uint32_t AbsTileY, uint32_t AbsTileZ)
 {
-  bool Empty = false;
-
   tile_chunk_position ChunkPos = GetChunkPositionFor(TileMap, AbsTileX, AbsTileY, AbsTileZ);
   tile_chunk *TileChunk = GetTileChunk(TileMap, ChunkPos.TileChunkX, ChunkPos.TileChunkY, ChunkPos.TileChunkZ);
   uint32_t TileChunkValue = GetTileValue(TileMap, TileChunk, ChunkPos.RelTileX, ChunkPos.RelTileY);
@@ -89,10 +62,16 @@ internal uint32_t GetTileValue(tile_map *TileMap, uint32_t AbsTileX, uint32_t Ab
   return TileChunkValue;
 }
 
-internal bool IsTileMapPointEmpty(tile_map *TileMap, tile_map_position CanPos)
+internal uint32_t GetTileValue(tile_map *TileMap, tile_map_position Pos)
 {
-  uint32_t TileChunkValue = GetTileValue(TileMap, CanPos.AbsTileX, CanPos.AbsTileY, CanPos.AbsTileZ);
-  bool Empty = (TileChunkValue == 1);
+  uint32_t TileChunkValue = GetTileValue(TileMap, Pos.AbsTileX, Pos.AbsTileY, Pos.AbsTileZ);
+  return TileChunkValue;
+}
+
+internal bool IsTileMapPointEmpty(tile_map *TileMap, tile_map_position Pos)
+{
+  uint32_t TileChunkValue = GetTileValue(TileMap, Pos);
+  bool Empty = (TileChunkValue == 1) || (TileChunkValue == 3) || (TileChunkValue == 4);
   return Empty;
 }
 
@@ -113,4 +92,38 @@ internal void SetTileValue(memory_arena *Arena, tile_map *TileMap, uint32_t AbsT
   }
 
   SetTileValue(TileMap, TileChunk, ChunkPos.RelTileX, ChunkPos.RelTileY, TileValue);
+}
+//
+//TODO: Do these really belong in more of a "positioning" or "geometry" file?
+//
+//
+inline void RecanonicalizeCoord(tile_map *TileMap, uint32_t *Tile, real32 *TileRel)
+{
+  //TODO: Need to do something that doesn't use the divide/multiply method for recanonicalizing because this can end up rounding back on to the tile you just came from.
+
+  //NOTE:  TileMap is assumed to be toroidal, if you step off one end you come back on the other
+  int32_t Offset = RoundReal32ToInt32(*TileRel / TileMap->TileSideInMeters);
+  *Tile += Offset;
+  *TileRel -= Offset * TileMap->TileSideInMeters;
+
+  //TODO: Fix floating point math so this can be <
+  Assert(*TileRel >= -0.5f*TileMap->TileSideInMeters);
+  Assert(*TileRel <= 0.5f*TileMap->TileSideInMeters);
+
+}
+
+inline tile_map_position RecanonicalizePosition(tile_map *TileMap, tile_map_position Pos)
+{
+  tile_map_position Result = Pos;
+
+  RecanonicalizeCoord(TileMap, &Result.AbsTileX, &Result.OffsetX);
+  RecanonicalizeCoord(TileMap, &Result.AbsTileY, &Result.OffsetY);
+
+  return Result;
+}
+
+inline bool AreOnSameTile(tile_map_position *A, tile_map_position *B)
+{
+  bool Result = (A->AbsTileX == B->AbsTileX) && (A->AbsTileY == B->AbsTileY) && (A->AbsTileZ == B->AbsTileZ);
+  return Result;
 }

@@ -777,6 +777,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
 
   Win32LoadXInput();
   WNDCLASSA WindowClass = {};
+  /*NOTE: 1080p display mode is 1920x1080 -> half of that is 960x540
+  1920 -> 2048 = 2048 - 1920 -> 128pix
+  1080 -> 2048 = 2048 - 1080 -> 968pix
+  1024 + 128 = 1152pix
+  */
   Win32ResizeDIBSection(&GlobalBackBuffer, 960, 540);
 
   //TODO: Check if CS_OWNDC, CS_HREDRAW, CS_VREDRAW still matter
