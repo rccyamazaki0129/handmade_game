@@ -87,17 +87,62 @@ struct bitmap_header
 };
 #pragma pack(pop)
 
-internal uint32_t * DEBUGLoadBMP(thread_context *Thread, debug_platform_read_entire_file *ReadEntireFile, char *FileName)
+internal loaded_bitmap DEBUGLoadBMP(thread_context *Thread, debug_platform_read_entire_file *ReadEntireFile, char *FileName)
 {
-  uint32_t *Result = 0;
+  loaded_bitmap Result = {};
+  //NOTE: Byte order in memory is BB GG RR AA
+  // In little endian -> 0x AA RR GG BB
   debug_read_file_result ReadResult = ReadEntireFile(Thread, FileName);
   if (ReadResult.ContentsSize != 0)
   {
     bitmap_header *Header = (bitmap_header *)ReadResult.Contents;
     uint32_t *Pixels = (uint32_t *)((uint8_t *)ReadResult.Contents + Header->BitmapOffset);
-    Result = Pixels;
+    Result.Pixels = Pixels;
+    Result.Width = Header->Width;
+    Result.Height = Header->Height;
   }
   return Result;
+}
+
+internal void DrawBitmap(game_offscreen_buffer *Buffer, loaded_bitmap *Bitmap, real32 RealX, real32 RealY)
+{
+  int32_t MinX = RoundReal32ToInt32(RealX);
+  int32_t MinY = RoundReal32ToInt32(RealY);
+  int32_t MaxX = RoundReal32ToInt32(RealX + (real32)Bitmap->Width);
+  int32_t MaxY = RoundReal32ToInt32(RealY + (real32)Bitmap->Height);
+
+  if (MinX < 0)
+  {
+    MinX = 0;
+  }
+  if (MinY < 0)
+  {
+    MinY = 0;
+  }
+  if (MaxX > Buffer->Width)
+  {
+    MaxX = Buffer->Width;
+  }
+  if (MaxY > Buffer->Height)
+  {
+    MaxY = Buffer->Height;
+  }
+
+  //TODO: SourceRow needs to be changed based on clipping
+  uint32_t *SourceRow = Bitmap->Pixels + Bitmap->Width * (Bitmap->Height - 1);
+  uint8_t *DestRow = ((uint8_t *)(Buffer->Memory) + MinX*Buffer->BytesPerPixel + MinY*Buffer->Pitch);
+
+  for (int32_t Y = MinY; Y < MaxY; ++Y)
+  {
+    uint32_t *Dest = (uint32_t *)DestRow;
+    uint32_t *Source = SourceRow;
+    for (int32_t X = MinX; X < MaxX; ++X)
+    {
+      *Dest++ = *Source++;
+    }
+    DestRow += Buffer->Pitch;
+    SourceRow -= Bitmap->Width;
+  }
 }
 
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
@@ -111,7 +156,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *GameState = (game_state *)Memory->PermanentStorage;
   if (!Memory->IsInitialized)
   {
-    GameState->PixelPointer = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "view.bmp");
+    GameState->Backdrop = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "background.bmp");
+    GameState->Character = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "character2.bmp");
+
     GameState->PlayerP.AbsTileX = 1;
     GameState->PlayerP.AbsTileY = 3;
     GameState->PlayerP.OffsetX = 5.0f;
@@ -374,7 +421,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 1.0f, 0.0f, 1.0f);
+  DrawBitmap(Buffer, &GameState->Backdrop, 0, 0);
 
   real32 ScreenCenterX = 0.5f * (real32)Buffer->Width;
   real32 ScreenCenterY = 0.5f * (real32)Buffer->Height;
@@ -385,7 +432,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       uint32_t Column = GameState->PlayerP.AbsTileX + RelColumn;
       uint32_t Row = GameState->PlayerP.AbsTileY + RelRow;
       uint32_t TileID = GetTileValue(TileMap, Column, Row, GameState->PlayerP.AbsTileZ);
-      if (TileID > 0)
+      if (TileID > 1)
       {
         real32 Gray = 0.3f;
         if (TileID == 2)
@@ -421,19 +468,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   real32 PlayerLeft = ScreenCenterX - 0.5f * MetersToPixels * PlayerWidth;
   real32 PlayerTop = ScreenCenterY - MetersToPixels * PlayerHeight;
 
-  DrawRectangle(Buffer, PlayerLeft, PlayerTop, PlayerLeft + MetersToPixels * PlayerWidth, PlayerTop + MetersToPixels * PlayerHeight, PlayerR, PlayerG, PlayerB);
+  // DrawRectangle(Buffer, PlayerLeft, PlayerTop, PlayerLeft + MetersToPixels * PlayerWidth, PlayerTop + MetersToPixels * PlayerHeight, PlayerR, PlayerG, PlayerB);
 
-#if 0
-  uint32_t *Source = GameState->PixelPointer;
-  uint32_t *Dest = (uint32_t *)Buffer->Memory;
-  for (int32_t Y = 0; Y < Buffer->Height; ++Y)
-  {
-    for (int32_t X = 0; X < Buffer->Width; ++X)
-    {
-      *Dest++ = *Source++;
-    }
-  }
-#endif
+  DrawBitmap(Buffer, &GameState->Character, PlayerLeft, PlayerTop);
+
 
 }
 

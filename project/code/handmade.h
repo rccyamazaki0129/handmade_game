@@ -82,12 +82,21 @@ struct world
   tile_map *TileMap;
 };
 
+struct loaded_bitmap
+{
+  int32_t Width;
+  int32_t Height;
+  uint32_t *Pixels;
+};
+
 struct game_state
 {
   memory_arena WorldArena;
   world *World;
   tile_map_position PlayerP;
-  uint32_t *PixelPointer;
+
+  loaded_bitmap Backdrop;
+  loaded_bitmap Character;
 };
 
 #endif
