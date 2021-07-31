@@ -84,6 +84,16 @@ struct bitmap_header
   int32_t Height;
   uint16_t Planes;
   uint16_t BitsPerPixel;
+  uint32_t Compression;
+  uint32_t SizeofBitmap;
+  int32_t HorzResolution;
+  int32_t VertResolution;
+  uint32_t ColorsUsed;
+  uint32_t ColorsImportant;
+
+  uint32_t RedMask;
+  uint32_t GreenMask;
+  uint32_t BlueMask;
 };
 #pragma pack(pop)
 
@@ -138,7 +148,31 @@ internal void DrawBitmap(game_offscreen_buffer *Buffer, loaded_bitmap *Bitmap, r
     uint32_t *Source = SourceRow;
     for (int32_t X = MinX; X < MaxX; ++X)
     {
-      *Dest++ = *Source++;
+      real32 Alpha = (real32)((*Source >> 24) & 0xFF) / 255.0f;
+      real32 SourceRed = (real32)((*Source >> 16) & 0xFF);
+      real32 SourceGreen = (real32)((*Source >> 8) & 0xFF);
+      real32 SourceBlue = (real32)((*Source >> 0) & 0xFF);
+
+      real32 DestRed = (real32)((*Dest >> 16) & 0xFF);
+      real32 DestGreen = (real32)((*Dest >> 8) & 0xFF);
+      real32 DestBlue = (real32)((*Dest >> 0) & 0xFF);
+
+      //NOTE: Blend equetion
+      //TODO: Someday, we need to talk about premultiplied alpha.
+      real32 Red = (1.0f - Alpha) * DestRed + Alpha * SourceRed;
+      real32 Green = (1.0f - Alpha) * DestGreen + Alpha * SourceGreen;
+      real32 Blue = (1.0f - Alpha) * DestBlue + Alpha * SourceBlue;
+
+      *Dest = (((uint32_t)(Red + 0.5f) << 16) |
+               ((uint32_t)(Green + 0.5f) << 8) |
+               ((uint32_t)(Blue + 0.5f) << 0));
+      // uint8_t Alpha = (*Source >> 24);
+      // real32 AlphaRate = (real32)Alpha / (real32)255.0f;
+      // int32_t Diff = *Source - *Dest;
+      // *Dest += uint32_t(AlphaRate * Diff);
+
+      ++Dest;
+      ++Source;
     }
     DestRow += Buffer->Pitch;
     SourceRow -= Bitmap->Width;
@@ -157,7 +191,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if (!Memory->IsInitialized)
   {
     GameState->Backdrop = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "background.bmp");
-    GameState->Character = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "character2.bmp");
+    GameState->Character = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "character.bmp");
 
     GameState->PlayerP.AbsTileX = 1;
     GameState->PlayerP.AbsTileY = 3;
