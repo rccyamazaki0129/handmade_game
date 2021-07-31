@@ -190,8 +190,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state *GameState = (game_state *)Memory->PermanentStorage;
   if (!Memory->IsInitialized)
   {
-    GameState->Backdrop = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "background.bmp");
-    GameState->Character = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "character.bmp");
+    //NOTE: At the momoent, every BMP needs to have alpha channel to be loaded properly.
+    GameState->Backdrop = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "city.bmp");
+    GameState->Character = DEBUGLoadBMP(Thread, Memory->DEBUGPlatformReadEntireFile, "boy.bmp");
 
     GameState->PlayerP.AbsTileX = 1;
     GameState->PlayerP.AbsTileY = 3;
