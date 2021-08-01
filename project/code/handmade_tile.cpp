@@ -127,3 +127,17 @@ inline bool AreOnSameTile(tile_map_position *A, tile_map_position *B)
   bool Result = (A->AbsTileX == B->AbsTileX) && (A->AbsTileY == B->AbsTileY) && (A->AbsTileZ == B->AbsTileZ);
   return Result;
 }
+
+tile_map_difference SubtractInReal32(tile_map *TileMap, tile_map_position *A, tile_map_position *B)
+{
+  tile_map_difference Result;
+
+  real32 dTileX = (real32)A->AbsTileX - (real32)B->AbsTileX;
+  real32 dTileY = (real32)A->AbsTileY - (real32)B->AbsTileY;
+  real32 dTileZ = (real32)A->AbsTileZ - (real32)B->AbsTileZ;
+  Result.dX = TileMap->TileSideInMeters * dTileX + (A->OffsetX - B->OffsetX);
+  Result.dY = TileMap->TileSideInMeters * dTileY + (A->OffsetY - B->OffsetY);
+  //TODO: Think about what we want to do about Z
+  Result.dZ = TileMap->TileSideInMeters * dTileZ + 0.0f;
+  return Result;
+}

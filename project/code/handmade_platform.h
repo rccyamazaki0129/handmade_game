@@ -120,6 +120,32 @@ struct game_memory
   debug_platform_write_entire_file *DEBUGPlatformWriteEntireFile;
 };
 
+#pragma pack(push, 1)
+struct bitmap_header
+{
+  uint16_t FileType;
+  uint32_t FileSize;
+  uint16_t Reserved1;
+  uint16_t Reserved2;
+  uint32_t BitmapOffset;
+  uint32_t Size;
+  int32_t Width;
+  int32_t Height;
+  uint16_t Planes;
+  uint16_t BitsPerPixel;
+  uint32_t Compression;
+  uint32_t SizeofBitmap;
+  int32_t HorzResolution;
+  int32_t VertResolution;
+  uint32_t ColorsUsed;
+  uint32_t ColorsImportant;
+
+  uint32_t RedMask;
+  uint32_t GreenMask;
+  uint32_t BlueMask;
+};
+#pragma pack(pop)
+
 #define GAME_UPDATE_AND_RENDER(name) void name(thread_context *Thread, game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 

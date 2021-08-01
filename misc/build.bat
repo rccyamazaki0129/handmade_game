@@ -5,6 +5,8 @@ IF NOT EXIST z:\handmade_game\project\build mkdir z:\handmade_game\project\build
 pushd z:\handmade_game\project\build
 del *.pdb > NUL 2> NUL
 REM Optimization switches /O2 /Oi /fp:fast
+echo WAITING FOR PDB > lock.tmp
 cl %CompilerFlags% z:\handmade_game\project\code\handmade.cpp -Fmhandmade.map /LD /link -incremental:no /PDB:handmade_%random%.pdb /EXPORT:GameGetSoundSamples /EXPORT:GameUpdateAndRender
+del lock.tmp
 cl %CompilerFlags% z:\handmade_game\project\code\win32_handmade.cpp -Fmwin32_handmade.map /link %LinkerFlags%
 popd

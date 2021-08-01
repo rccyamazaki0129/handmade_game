@@ -178,20 +178,21 @@ inline FILETIME Win32GetLastWriteTime(char *FileName)
   return LastWriteTime;
 }
 
-internal win32_game_code Win32LoadGameCode(char* SourceDLLName, char* TempDLLName)
+internal win32_game_code Win32LoadGameCode(char* SourceDLLName, char* TempDLLName, char*LockFileName)
 {
   win32_game_code Result = {};
 
-  //TODO: Need to get the proper path here
-  //TODO: Automatic determination of when updates are necessary
-
-  Result.DLLLastWriteTime = Win32GetLastWriteTime(SourceDLLName);
-  CopyFile(SourceDLLName, TempDLLName, false);
-  Result.GameCodeDLL = LoadLibraryA(TempDLLName);
-  if (Result.GameCodeDLL){
-    Result.UpdateAndRender = (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
-    Result.GetSoundSamples = (game_get_sound_samples *)GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
-    Result.IsValid = (Result.UpdateAndRender && Result.GetSoundSamples);
+  WIN32_FILE_ATTRIBUTE_DATA Ignored;
+  if (!GetFileAttributesExA(LockFileName, GetFileExInfoStandard, &Ignored))
+  {
+    Result.DLLLastWriteTime = Win32GetLastWriteTime(SourceDLLName);
+    CopyFile(SourceDLLName, TempDLLName, false);
+    Result.GameCodeDLL = LoadLibraryA(TempDLLName);
+    if (Result.GameCodeDLL){
+      Result.UpdateAndRender = (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+      Result.GetSoundSamples = (game_get_sound_samples *)GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
+      Result.IsValid = (Result.UpdateAndRender && Result.GetSoundSamples);
+    }
   }
   if (!Result.IsValid){
     Result.UpdateAndRender = 0;
@@ -771,6 +772,9 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   char TempGameCodeDLLFullPath[WIN32_STATE_FILE_NAME_COUNT];
   Win32BuildEXEPathFileName(&Win32State, "handmade_temp.dll", sizeof(TempGameCodeDLLFullPath), TempGameCodeDLLFullPath);
 
+  char GameCodeLockFullPath[WIN32_STATE_FILE_NAME_COUNT];
+  Win32BuildEXEPathFileName(&Win32State, "Lock.tmp", sizeof(GameCodeLockFullPath), GameCodeLockFullPath);
+
   //NOTE: Set the windows scheduler granularity to 1ms
   UINT DesiredSchedulerMS = 1;
   bool SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
@@ -914,7 +918,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
             real32 AudioLatencySeconds = 0;
             bool SoundIsValid = false;
 
-            win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath);
+            win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath, GameCodeLockFullPath);
             uint32_t LoadCounter = 0;
 
             uint64_t LastCycleCount = __rdtsc();
@@ -930,7 +934,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
               {
                 Sleep(500);//IMPORTANT: Build another DLL takes a while, on the other hand, loading it is too quick
                 Win32UnloadGameCode(&Game);
-                Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath);
+                Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath, GameCodeLockFullPath);
                 LoadCounter = 0;
               }
               //TODO: Create zero macro
