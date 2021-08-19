@@ -6,7 +6,6 @@
   - Asset loading path
   - Threading (launcha thread)
   - Raw input (support for multiple keyboards)
-  - Sleep/time Begin period
   - ClipCursor() (for multimonitor support)
   - Fullscreen support
   - WM_SETCURSOR (control cursor visibility)
@@ -360,6 +359,11 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
   LRESULT Result = 0;
 
   switch(Message){
+    case WM_SETCURSOR:
+    {
+      Assert("SETCURSOR!!!");
+      // Window.hCursor = LoadCursor(0, IDC_CROSS);
+    }
     case WM_SIZE:{
       break;
     }
@@ -582,6 +586,10 @@ internal void Win32ProcessPendingMessages(win32_state *State, game_controller_in
     switch (Message.message){
       case WM_QUIT:{
         GlobalRunning = false;
+        break;
+      }
+      case WM_SETCURSOR:
+      {
         break;
       }
       case WM_SYSKEYDOWN:

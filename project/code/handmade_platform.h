@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define internal static
+#define local_persist static
+#define global_variable static
+
 typedef float real32;
 typedef double real64;
 typedef size_t memory_index;

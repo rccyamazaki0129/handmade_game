@@ -3,10 +3,6 @@
 
 #include "handmade_platform.h"
 
-#define internal static
-#define local_persist static
-#define global_variable static
-
 #define Pi32 3.14159265359f
 
 
