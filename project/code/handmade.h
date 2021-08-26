@@ -6,14 +6,6 @@
 #define Pi32 3.14159265359f
 
 
-/*
-  NOTE:
-  HANDMADE_INTERNAL: 0 - Build for public release
-                     1 - Build for developer only
-  HANDMADE_SLOW:     0 - Not Slow code allowed!
-                     1 - Slow code welcome.
-*/
-
 #if HANDMADE_SLOW
 #define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}//if this is true, program will crash
 #else

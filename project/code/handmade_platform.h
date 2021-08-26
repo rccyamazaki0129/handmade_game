@@ -1,6 +1,14 @@
 #ifndef HANDMADE_PLATFORM_H
 #define HANDMADE_PLATFORM_H
 
+/*
+  NOTE:
+  HANDMADE_INTERNAL: 0 - Build for public release
+                     1 - Build for developer only
+  HANDMADE_SLOW:     0 - Not Slow code allowed!
+                     1 - Slow code welcome.
+*/
+
 #include <stdint.h>
 
 #define internal static

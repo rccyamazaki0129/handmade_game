@@ -1,18 +1,19 @@
 /*
   TODO: This is not a final platform layer!!
-
+  - Fullscreen support
+  - Make the right calls so Windows doesn't think we're still loading for a bit after we actually start
   - Saved game locations
   - Getting a handle to our own executable file
   - Asset loading path
   - Threading (launcha thread)
   - Raw input (support for multiple keyboards)
   - ClipCursor() (for multimonitor support)
-  - Fullscreen support
   - WM_SETCURSOR (control cursor visibility)
   - QueryCancelAutoplay
   - Blit speed improvements (BitBlt)
   - Hardware acceleration (openGL or Direct3D or BOTH?)
   - GetKeyboardLayout (for french keyboards, international WASD support)
+  - ChangeDisplaySettings option if we detect slow fullscreen blit
   - etc...
 */
 #include "handmade.h"
@@ -30,7 +31,30 @@ global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
 global_variable LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 global_variable int64_t GlobalPerfCountFrequency;
+global_variable bool DEBUGGlobalShowCursor;
+global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 
+
+internal void ToggleFullScreen(HWND Window)
+{
+  //NOTE: This follows Raymond Chen's prescription
+  DWORD Style = GetWindowLong(Window, GWL_STYLE);
+  if (Style & WS_OVERLAPPEDWINDOW)
+  {
+    MONITORINFO MonitorInfo = {sizeof(MonitorInfo)};
+    if (GetWindowPlacement(Window, &GlobalWindowPosition) && GetMonitorInfo(MonitorFromWindow(Window, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo))
+    {
+      SetWindowLong(Window, GWL_STYLE, Style & ~WS_OVERLAPPEDWINDOW);
+      SetWindowPos(Window, HWND_TOP,MonitorInfo.rcMonitor.left, MonitorInfo.rcMonitor.top, MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left, MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top, SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+  }
+  else
+  {
+    SetWindowLong(Window, GWL_STYLE, Style | WS_OVERLAPPEDWINDOW);
+    SetWindowPlacement(Window, &GlobalWindowPosition);
+    SetWindowPos(Window, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  }
+}
 
 //NOTE: XInputGetState
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
@@ -337,21 +361,28 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
   Buffer->Pitch = Buffer->Width * BytesPerPixel;
 }
 
-internal void Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer, HDC DeviceContext, int WindowWidth, int WindowHeight){
-  //TODO: Aspect ratio correction
-  int OffsetX = 10;
-  int OffsetY = 10;
+internal void Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer, HDC DeviceContext, int WindowWidth, int WindowHeight)
+{
+  //TODO: Centering / black bars?
+  
+  if ((WindowWidth >= Buffer->Width * 2) && (WindowHeight >= Buffer->Height * 2))
+  {
+    StretchDIBits(DeviceContext, 0, 0, Buffer->Width * 2, Buffer->Height * 2, 0, 0, Buffer->Width, Buffer->Height, Buffer->Memory, &Buffer->Info, DIB_RGB_COLORS, SRCCOPY);
+  }
+  else
+  {
+    int OffsetX = 10;
+    int OffsetY = 10;
 
-  PatBlt(DeviceContext, 0, 0, WindowWidth, OffsetY, BLACKNESS);
-  PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
-  PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
-  PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
+    PatBlt(DeviceContext, 0, 0, WindowWidth, OffsetY, BLACKNESS);
+    PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
+    PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
+    PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
 
-  //NOTE: For prototyping purposes, we are going to always blit 1-to-1 pixels to make sure we don't introduce artifacts with stretching while we are learning to code the renderer
-  StretchDIBits(DeviceContext,
-                OffsetX, OffsetY, Buffer->Width, Buffer->Height,
-                0, 0, Buffer->Width, Buffer->Height,
-                Buffer->Memory, &Buffer->Info, DIB_RGB_COLORS, SRCCOPY);
+    //NOTE: For prototyping purposes, we are going to always blit 1-to-1 pixels to make sure we don't introduce artifacts with stretching while we are learning to code the renderer
+    StretchDIBits(DeviceContext, OffsetX, OffsetY, Buffer->Width, Buffer->Height,
+      0, 0, Buffer->Width, Buffer->Height, Buffer->Memory, &Buffer->Info, DIB_RGB_COLORS, SRCCOPY);
+  }
 }
 
 internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam){
@@ -361,8 +392,14 @@ internal LRESULT CALLBACK Win32MainWindowCallback(HWND Window, UINT Message, WPA
   switch(Message){
     case WM_SETCURSOR:
     {
-      Assert("SETCURSOR!!!");
-      // Window.hCursor = LoadCursor(0, IDC_CROSS);
+      if (DEBUGGlobalShowCursor)
+      {
+        Result = DefWindowProcA(Window, Message, WParam, LParam);
+      }
+      else
+      {
+        SetCursor(0);
+      }
     }
     case WM_SIZE:{
       break;
@@ -588,10 +625,6 @@ internal void Win32ProcessPendingMessages(win32_state *State, game_controller_in
         GlobalRunning = false;
         break;
       }
-      case WM_SETCURSOR:
-      {
-        break;
-      }
       case WM_SYSKEYDOWN:
       case WM_SYSKEYUP:
       case WM_KEYDOWN:
@@ -662,10 +695,18 @@ internal void Win32ProcessPendingMessages(win32_state *State, game_controller_in
             }
           }
 #endif
-        }
-        bool AltKeyWasDown = ((Message.lParam & (1 << 29)) != 0);
-        if ((VKCode == VK_F4) && AltKeyWasDown){
-          GlobalRunning = false;
+          if (IsDown)
+          {
+            bool AltKeyWasDown = ((Message.lParam & (1 << 29)) != 0);
+            if ((VKCode == VK_F4) && AltKeyWasDown)
+            {
+              GlobalRunning = false;
+            }
+            if ((VKCode == VK_RETURN) && AltKeyWasDown)
+            {
+              ToggleFullScreen(Message.hwnd);
+            }
+          }
         }
         break;
       }
@@ -788,6 +829,10 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   bool SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
 
   Win32LoadXInput();
+
+#if HANDMADE_INTERNAL
+  DEBUGGlobalShowCursor = true;
+#endif
   WNDCLASSA WindowClass = {};
   /*NOTE: 1080p display mode is 1920x1080 -> half of that is 960x540
   1920 -> 2048 = 2048 - 1920 -> 128pix
@@ -800,6 +845,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLi
   WindowClass.style = CS_HREDRAW|CS_VREDRAW;
   WindowClass.lpfnWndProc = Win32MainWindowCallback;
   WindowClass.hInstance = Instance;
+  WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
   // WindowClass.hIcon;
   // LPCSTR    lpszMenuName;
   WindowClass.lpszClassName = "HandmadeWindowClass";
