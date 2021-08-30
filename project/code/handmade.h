@@ -39,6 +39,7 @@ inline game_controller_input *GetController(game_input *Input, int ControllerInd
 
 #include "handmade_intrinsics.h"
 #include "handmade_tile.h"
+#include "handmade_math.h"
 
 struct memory_arena
 {
