@@ -1,15 +1,16 @@
 #ifndef HANDMADE_MATH
 #define HANDMADE_MATH
 
-struct v2
+union v2
 {
-  real32 X, Y;
-  real32 &operator[](int Index) {return (&X)[Index];};
-
-  inline v2 &operator*=(real32 A);
-  inline v2 &operator+=(v2 A);
+  struct
+  {
+    real32 X, Y;
+  };
+  real32 E[2];
 };
 
+//TODO: Consider v2 A = v2{5, 3}; ?
 inline v2 V2(real32 X, real32 Y)
 {
   v2 Result;
@@ -50,15 +51,15 @@ inline v2 operator-(v2 A, v2 B)
   return Result;
 }
 
-inline v2 &v2::operator+=(v2 A)
+inline v2 &operator+=(v2 &A, v2 B)
 {
-  *this = *this + A;
-  return *this;
+  A = A + B;
+  return A;
 }
 
-inline v2 &v2::operator*=(real32 A)
+inline v2 &operator*=(v2 &B, real32 A)
 {
-  *this = A * *this;
-  return *this;
+  B = A * B;
+  return B;
 }
 #endif
