@@ -89,8 +89,11 @@ struct game_state
 {
   memory_arena WorldArena;
   world *World;
+
   tile_map_position CameraP;
   tile_map_position PlayerP;
+  v2 dPlayerP;
+  
   loaded_bitmap Backdrop;
   uint32_t HeroFacingDirection;
   hero_bitmaps HeroBitmaps[4];
