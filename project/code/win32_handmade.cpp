@@ -364,7 +364,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 internal void Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer, HDC DeviceContext, int WindowWidth, int WindowHeight)
 {
   //TODO: Centering / black bars?
-  
+
   if ((WindowWidth >= Buffer->Width * 2) && (WindowHeight >= Buffer->Height * 2))
   {
     StretchDIBits(DeviceContext, 0, 0, Buffer->Width * 2, Buffer->Height * 2, 0, 0, Buffer->Width, Buffer->Height, Buffer->Memory, &Buffer->Info, DIB_RGB_COLORS, SRCCOPY);
@@ -666,10 +666,10 @@ internal void Win32ProcessPendingMessages(win32_state *State, game_controller_in
           }
           else if (VKCode == VK_ESCAPE){
             GlobalRunning = false;
-            Win32ProcessKeyboardMessage(&KeyboardController->Start, IsDown);
+            Win32ProcessKeyboardMessage(&KeyboardController->Back, IsDown);
           }
           else if (VKCode == VK_SPACE){
-            Win32ProcessKeyboardMessage(&KeyboardController->Back, IsDown);
+            Win32ProcessKeyboardMessage(&KeyboardController->Start, IsDown);
           }
 #if HANDMADE_INTERNAL
           else if (VKCode == 'L')

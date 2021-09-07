@@ -3,6 +3,12 @@
 
 #include "math.h"
 //TODO: Convert all of these to platform-efficient versions and remove math.h
+inline real32 AbsoluteValue(real32 Real32)
+{
+  real32 Result = (real32)fabs(Real32);
+  return Result;
+}
+
 
 inline int32_t RoundReal32ToInt32(real32 Real32)
 {
