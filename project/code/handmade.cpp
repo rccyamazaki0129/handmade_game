@@ -83,7 +83,39 @@ internal loaded_bitmap DEBUGLoadBMP(thread_context *Thread, debug_platform_read_
     Result.Pixels = Pixels;
     Result.Width = Header->Width;
     Result.Height = Header->Height;
+
+    uint32_t RedMask = Header->RedMask;
+    uint32_t GreenMask = Header->GreenMask;
+    uint32_t BlueMask = Header->BlueMask;
+    uint32_t AlphaMask = ~(RedMask | GreenMask | BlueMask);
+
+    bit_scan_result RedScan = FindLeastSignificantSetBit(RedMask);
+    bit_scan_result GreenScan = FindLeastSignificantSetBit(GreenMask);
+    bit_scan_result BlueScan = FindLeastSignificantSetBit(BlueMask);
+    bit_scan_result AlphaScan = FindLeastSignificantSetBit(AlphaMask);
+
+    Assert(RedScan.Found);
+    Assert(GreenScan.Found);
+    Assert(BlueScan.Found);
+    Assert(AlphaScan.Found);
+
+    int32_t RedShift = 16 - (int32_t)RedScan.Index;
+    int32_t GreenShift = 8 - (int32_t)GreenScan.Index;
+    int32_t BlueShift = 0 - (int32_t)BlueScan.Index;
+    int32_t AlphaShift = 24 - (int32_t)AlphaScan.Index;
+
+    uint32_t *SourceDest = Pixels;
+    for (int32_t Y = 0; Y < Header->Height; ++Y)
+    {
+      for (int32_t X = 0; X < Header->Width; ++X)
+      {
+        uint32_t C = *SourceDest;
+
+        *SourceDest++ = (RotateLeft(C & RedMask, RedShift) | RotateLeft(C & GreenMask, GreenShift) | RotateLeft(C & BlueMask, BlueShift) | RotateLeft(C & AlphaMask, AlphaShift));
+      }
+    }
   }
+
   return Result;
 }
 
@@ -170,8 +202,9 @@ inline entity* GetEntity(game_state *GameState, uint32_t Index)
   return Entity;
 }
 
-internal void InitializePlayer(entity *Entity)
+internal void InitializePlayer(game_state *GameState, uint32_t EntityIndex)
 {
+  entity *Entity = GetEntity(GameState, EntityIndex);
   Entity->Exists = true;
   Entity->P.AbsTileX = 1;
   Entity->P.AbsTileY = 3;
@@ -180,6 +213,11 @@ internal void InitializePlayer(entity *Entity)
 
   Entity->Height = 1.4f;
   Entity->Width = 0.75f * Entity->Height;
+
+  if (!GetEntity(GameState, GameState->CameraFollowingEntityIndex))
+  {
+    GameState->CameraFollowingEntityIndex = EntityIndex;
+  }
 }
 
 internal uint32_t AddEntity(game_state *GameState)
@@ -311,8 +349,11 @@ internal void MovePlayer(game_state *GameState, entity *Entity, real32 dt, v2 dd
     }
   }
 
-
-  if (AbsoluteValue(Entity->dP.X) > AbsoluteValue(Entity->dP.Y))
+  if (Entity->dP.X == 0.0f && Entity->dP.Y == 0.0f)
+  {
+    //NOTE: Leave FacingDirection whatever it was
+  }
+  else if (AbsoluteValue(Entity->dP.X) > AbsoluteValue(Entity->dP.Y))
   {
     if (Entity->dP.X > 0)
     {
@@ -323,7 +364,7 @@ internal void MovePlayer(game_state *GameState, entity *Entity, real32 dt, v2 dd
       Entity->FacingDirection = 2;
     }
   }
-  else if (AbsoluteValue(Entity->dP.X) < AbsoluteValue(Entity->dP.Y))
+  else
   {
     if (Entity->dP.Y > 0)
     {
@@ -605,8 +646,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if (Controller->Start.EndedDown)
       {
         uint32_t EntityIndex = AddEntity(GameState);
-        ControllingEntity = GetEntity(GameState, EntityIndex);
-        InitializePlayer(ControllingEntity);
+        InitializePlayer(GameState, EntityIndex);
         GameState->PlayerIndexForController[ControllerIndex] = EntityIndex;
       }
     }
@@ -678,6 +718,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   entity* Entity = GameState->Entities;
   for (uint32_t EntityIndex = 0; EntityIndex < GameState->EntityCount; ++EntityIndex, ++Entity)
   {
+    //TODO: Culling of entities based on Z / camera view
     if (Entity->Exists)
     {
       tile_map_difference Diff = SubtractInReal32(TileMap, &Entity->P, &GameState->CameraP);
