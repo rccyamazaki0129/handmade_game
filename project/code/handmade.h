@@ -41,6 +41,9 @@ inline game_controller_input *GetController(game_input *Input, int ControllerInd
 #include "handmade_tile.h"
 #include "handmade_math.h"
 
+#define Minimum(A, B) ((A < B) ? (A) : (B))
+#define Maximum(A, B) ((A > B) ? (A) : (B))
+
 struct memory_arena
 {
   memory_index Size;
